@@ -1,642 +1,3 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>게임 파티 스케줄러</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root {
-  --navy: #0f1923;
-  --navy-light: #1a2535;
-  --navy-border: #243040;
-  --mint: #0ec9a7;
-  --mint-dark: #0aaa8c;
-  --mint-light: #e6faf6;
-  --mint-glow: rgba(14,201,167,0.15);
-  --blue: #3b82f6;
-  --blue-light: #eff6ff;
-  --orange: #f97316;
-  --orange-light: #fff7ed;
-  --red: #ef4444;
-  --red-light: #fef2f2;
-  --yellow: #eab308;
-  --yellow-light: #fefce8;
-  --bg: #f0f2f5;
-  --surface: #ffffff;
-  --surface2: #f8fafc;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.06);
-  --shadow-xl: 0 20px 40px -4px rgba(0,0,0,0.12);
-  --radius: 10px;
-  --radius-sm: 6px;
-  --radius-lg: 14px;
-  --transition: 0.18s ease;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
-button{cursor:pointer;font-family:inherit;border:none;outline:none}
-input,select,textarea{font-family:inherit;outline:none}
-a{text-decoration:none;color:inherit}
-.navbar {
-  position: sticky;top:0;z-index:100;
-  background: var(--navy);
-  height: 56px;
-  display: flex;
-  align-items: center;
-  padding: 0 28px;
-  gap: 8px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-}
-.navbar-brand {
-  display: flex;align-items:center;gap:10px;
-  color: #fff;font-size:16px;font-weight:700;
-  letter-spacing:-0.3px;
-  margin-right: auto;
-}
-.navbar-brand .logo {
-  width:32px;height:32px;border-radius:8px;
-  background: linear-gradient(135deg,var(--mint),var(--mint-dark));
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;box-shadow:0 2px 8px rgba(14,201,167,0.4);
-}
-.nav-tabs {display:flex;align-items:center;gap:4px;}
-.nav-tab {
-  display:flex;align-items:center;gap:7px;
-  padding:8px 16px;border-radius:8px;
-  color:rgba(255,255,255,0.6);font-size:13.5px;font-weight:500;
-  background:transparent;transition:all var(--transition);
-  cursor:pointer;border:none;
-}
-.nav-tab:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.07)}
-.nav-tab.active {background: var(--mint);color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(14,201,167,0.4);}
-.nav-tab svg{width:15px;height:15px;flex-shrink:0}
-.nav-settings{
-  background:transparent;color:rgba(255,255,255,0.5);
-  width:36px;height:36px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  transition:all var(--transition);margin-left:8px;
-}
-.nav-settings:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
-.tab-content{display:none}
-.tab-content.active{display:block}
-.page-container{max-width:1400px;margin:0 auto;padding:28px 28px}
-.page-header{text-align:center;padding:32px 0 24px}
-.page-header h1{font-size:26px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
-.page-header p{color:var(--text-secondary);margin-top:6px;font-size:14px}
-.schedule-top {display:flex;align-items:flex-start;gap:20px;margin-bottom:20px;}
-.schedule-title-area{flex:0 0 auto}
-.schedule-title-area h2{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.4px}
-.schedule-title-area p{font-size:13px;color:var(--text-secondary);margin-top:3px}
-.memo-box {
-  flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
-  padding:12px 16px;box-shadow:var(--shadow-sm);min-height:72px;
-}
-.memo-box-header {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.memo-box-title {display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text-secondary);}
-.memo-box-title svg{color:var(--yellow);width:14px;height:14px}
-.memo-chips {display:flex;flex-wrap:wrap;gap:7px;align-items:center;}
-.memo-chip {
-  display:flex;align-items:center;gap:6px;background:var(--yellow-light);border:1px solid #fde68a;border-radius:20px;
-  padding:4px 10px;font-size:12.5px;color:var(--text);white-space:nowrap;
-}
-.memo-chip .player-name{font-weight:600;color:#92400e}
-.memo-chip .memo-del {
-  background:none;border:none;padding:0;color:#b45309;opacity:0.6;cursor:pointer;font-size:14px;line-height:1;
-  display:flex;align-items:center;
-}
-.memo-chip .memo-del:hover{opacity:1}
-.memo-empty{font-size:12.5px;color:var(--text-muted);font-style:italic}
-.schedule-action-bar {display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.schedule-action-bar h3{font-size:15px;font-weight:600;color:var(--text)}
-.action-bar-left{display:flex;align-items:center;gap:10px}
-.btn {
-  display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;
-  transition:all var(--transition);cursor:pointer;border:none;
-}
-.btn svg{width:14px;height:14px;flex-shrink:0}
-.btn-mint{background:var(--mint);color:#fff;box-shadow:0 2px 8px rgba(14,201,167,0.3)}
-.btn-mint:hover{background:var(--mint-dark);box-shadow:0 4px 12px rgba(14,201,167,0.4);transform:translateY(-1px)}
-.btn-blue{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
-.btn-blue:hover{background:#2563eb;box-shadow:0 4px 12px rgba(59,130,246,0.4);transform:translateY(-1px)}
-.btn-orange{background:var(--orange);color:#fff;box-shadow:0 2px 8px rgba(249,115,22,0.3)}
-.btn-orange:hover{background:#ea6c0a;transform:translateY(-1px)}
-.btn-outline{background:transparent;color:var(--text-secondary);border:1.5px solid var(--border)}
-.btn-outline:hover{border-color:var(--mint);color:var(--mint);background:var(--mint-glow)}
-.btn-ghost{background:transparent;color:var(--text-secondary);padding:6px 10px}
-.btn-ghost:hover{background:var(--border-light);color:var(--text)}
-.btn-sm{padding:5px 10px;font-size:12px}
-.btn-icon{padding:6px;border-radius:6px;background:transparent;color:var(--text-secondary);border:none}
-.btn-icon:hover{background:var(--border-light);color:var(--text)}
-.btn-icon svg{width:15px;height:15px}
-.btn-danger{background:var(--red);color:#fff}
-.btn-danger:hover{background:#dc2626}
-.btn-time-edit {
-  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:500;
-  background:var(--surface);border:1.5px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:all var(--transition);
-}
-.btn-time-edit:hover{border-color:var(--mint);color:var(--mint)}
-.btn-time-edit.active{background:var(--navy-light);border-color:var(--navy-border);color:#fff}
-.btn-time-edit svg{width:13px;height:13px}
-.schedule-wrapper {
-  background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:auto;box-shadow:var(--shadow);
-}
-.schedule-grid {min-width:900px;border-collapse:collapse;width:100%;}
-.schedule-grid th {
-  background:var(--surface2);padding:10px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--text-secondary);
-  border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:10;
-}
-.schedule-grid th:first-child {
-  width:105px;min-width:105px;text-align:left;padding-left:16px;border-right:2px solid var(--border);
-  position:sticky;left:0;z-index:20;background:var(--surface2);
-}
-.schedule-grid td {
-  padding:2px 4px;border-bottom:1px dashed var(--border-light);border-right:1px dashed var(--border);vertical-align:middle;height:44px;min-width:120px;
-}
-.schedule-grid td:first-child {
-  background:var(--surface2);padding:0 8px 0 16px;border-right:2px solid var(--border);font-size:12.5px;font-weight:500;color:var(--text-secondary);
-  white-space:nowrap;position:sticky;left:0;z-index:5;display:flex;align-items:center;gap:6px;
-}
-.schedule-grid tr:last-child td{border-bottom:none}
-.schedule-grid tr:hover td{background:rgba(14,201,167,0.025)}
-.schedule-grid tr:hover td:first-child{background:var(--surface2)}
-.time-edit-btns {display:none;align-items:center;gap:3px;margin-left:auto;}
-.time-edit-active .time-edit-btns{display:flex}
-.time-btn {
-  width:20px;height:20px;border-radius:4px;border:none;font-size:14px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;line-height:1;transition:all 0.12s;
-}
-.time-btn-add{background:#dcfce7;color:#16a34a}
-.time-btn-add:hover{background:#bbf7d0}
-.time-btn-del{background:#fee2e2;color:#dc2626}
-.time-btn-del:hover{background:#fecaca}
-.schedule-cell {width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:2px;}
-.schedule-cell-empty {
-  color:var(--border);font-size:16px;text-align:center;cursor:pointer;transition:all var(--transition);
-  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-}
-.schedule-cell-empty:hover{color:var(--mint);background:var(--mint-glow);border-radius:6px}
-.party-block {
-  width:100%;padding:5px 10px;background: linear-gradient(135deg,var(--mint),var(--mint-dark));color:#fff;border-radius:6px;font-size:12.5px;font-weight:600;
-  cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 2px 6px rgba(14,201,167,0.35);
-  transition:all var(--transition);white-space:nowrap;min-height:34px;
-}
-.party-block:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(14,201,167,0.45)}
-.party-block.has-absent {background: linear-gradient(135deg,#f97316,#ea580c);box-shadow:0 2px 6px rgba(249,115,22,0.35);}
-.party-block.has-absent:hover{box-shadow:0 4px 12px rgba(249,115,22,0.45)}
-.absent-badge {background:rgba(255,255,255,0.25);border-radius:10px;padding:1px 6px;font-size:11px;font-weight:700;}
-.section-header {display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-.section-header h3{font-size:15px;font-weight:600;color:var(--text-secondary)}
-.parties-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px;}
-.party-card {
-  background:var(--surface);border-radius:var(--radius-lg);border:1.5px solid var(--border);padding:20px;box-shadow:var(--shadow-sm);transition:all var(--transition);
-}
-.party-card:hover{box-shadow:var(--shadow);border-color:#d1d5db;transform:translateY(-1px)}
-.party-card-header {display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.party-card-header h4{font-size:16px;font-weight:700;color:var(--text)}
-.party-card-actions{display:flex;gap:4px}
-.party-meta {display:flex;flex-direction:column;gap:5px;margin-bottom:16px;}
-.party-meta-row {display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-secondary);}
-.party-meta-row svg{width:13px;height:13px;flex-shrink:0;color:var(--mint)}
-.party-meta-row strong{color:var(--text)}
-.party-members-label {font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;padding-top:12px;border-top:1px solid var(--border-light);}
-.member-row {display:flex;align-items:center;padding:7px 10px;border-radius:7px;transition:background var(--transition);gap:10px;}
-.member-row:hover{background:var(--surface2)}
-.member-info{flex:1;min-width:0}
-.member-player{font-size:13px;font-weight:600;color:var(--text)}
-.member-char{font-size:12px;color:var(--text-secondary);margin-top:1px}
-.level-badge {
-  font-size:12px;font-weight:600;padding:2px 8px;border-radius:12px;background:var(--blue-light);color:var(--blue);
-  white-space:nowrap;border:1px solid #bfdbfe;
-}
-.level-badge.warn{background:var(--orange-light);color:var(--orange);border-color:#fed7aa}
-.member-avatar {
-  width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--mint-light),var(--mint-glow));border:1.5px solid var(--mint);
-  display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mint-dark);font-weight:700;flex-shrink:0;
-}
-.empty-state {text-align:center;padding:48px 20px;color:var(--text-muted);}
-.empty-state svg{width:40px;height:40px;margin:0 auto 12px;display:block;opacity:0.3}
-.empty-state p{font-size:14px}
-.players-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
-.player-card {
-  background:var(--surface);border-radius:var(--radius-lg);border:1.5px solid var(--border);padding:18px;box-shadow:var(--shadow-sm);transition:all var(--transition);
-}
-.player-card:hover{box-shadow:var(--shadow);border-color:#d1d5db}
-.player-card-header {display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.player-avatar {
-  width:36px;height:36px;border-radius:50%;background: linear-gradient(135deg,#818cf8,#6366f1);
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(99,102,241,0.3);
-}
-.player-card-header h4{font-size:15px;font-weight:700;color:var(--text);flex:1;min-width:0}
-.player-char-count{font-size:12.5px;color:var(--text-muted);margin-bottom:10px}
-.char-row {display:flex;align-items:center;padding:6px 8px;border-radius:6px;transition:background var(--transition);gap:8px;margin-bottom:2px;}
-.char-row:hover{background:var(--surface2)}
-.char-name{flex:1;font-size:13px;font-weight:500;color:var(--text)}
-.char-role{font-size:11.5px;color:var(--text-muted)}
-.char-actions{display:none;gap:2px}
-.char-row:hover .char-actions{display:flex}
-.add-char-btn {
-  width:100%;margin-top:8px;padding:8px;border-radius:7px;border:1.5px dashed var(--border);background:transparent;font-size:12.5px;font-weight:500;
-  color:var(--text-muted);cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:5px;
-}
-.add-char-btn:hover{border-color:var(--mint);color:var(--mint);background:var(--mint-glow)}
-.modal-overlay {
-  position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;
-  padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s;
-}
-.modal-overlay.open{opacity:1;pointer-events:auto}
-.modal {
-  background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);width:100%;max-width:480px;max-height:85vh;overflow-y:auto;
-  transform:scale(0.95) translateY(8px);transition:transform 0.2s ease,opacity 0.2s;opacity:0;
-}
-.modal-overlay.open .modal{transform:scale(1) translateY(0);opacity:1}
-.modal-lg{max-width:560px}
-.modal-header {
-  display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;
-  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
-}
-.modal-header h3{font-size:16px;font-weight:700;color:var(--text)}
-.modal-close {
-  width:30px;height:30px;border-radius:6px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  color:var(--text-muted);font-size:18px;transition:all var(--transition);
-}
-.modal-close:hover{background:var(--border-light);color:var(--text)}
-.modal-body{padding:20px}
-.modal-footer {padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
-.form-group{margin-bottom:14px}
-.form-group label{display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
-.form-control {
-  width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:var(--surface);
-  transition:border-color var(--transition),box-shadow var(--transition);
-}
-.form-control:focus{border-color:var(--mint);box-shadow:0 0 0 3px var(--mint-glow)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-hint{font-size:11.5px;color:var(--text-muted);margin-top:4px}
-.form-error{font-size:11.5px;color:var(--red);margin-top:4px}
-.detail-meta {text-align:center;padding:10px 0 16px;border-bottom:1px solid var(--border-light);margin-bottom:14px;}
-.detail-meta p{font-size:13.5px;color:var(--text-secondary);line-height:1.8}
-.detail-meta strong{color:var(--text)}
-.detail-hint {font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:12px;font-style:italic;}
-.detail-member-row {
-  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;transition:background var(--transition);cursor:pointer;margin-bottom:4px;border:1.5px solid transparent;
-}
-.detail-member-row:hover{background:var(--surface2)}
-.detail-member-row.absent {background:var(--red-light);border-color:#fecaca;}
-.detail-member-row.absent .detail-member-name{color:var(--red);font-weight:700}
-.detail-member-row.absent .detail-member-char{color:#f87171}
-.detail-member-info{flex:1;min-width:0}
-.detail-member-name{font-size:13.5px;font-weight:600;color:var(--text)}
-.detail-member-char{font-size:12px;color:var(--text-secondary)}
-.absent-toggle {
-  width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;position:relative;flex-shrink:0;background:var(--border);
-}
-.absent-toggle::after {
-  content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
-}
-.absent-toggle.on{background:var(--red)}
-.absent-toggle.on::after{left:18px}
-.absent-warning {
-  margin-top:12px;padding:10px 14px;background:var(--orange-light);border:1px solid #fed7aa;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#c2410c;font-weight:500;
-}
-.absent-warning svg{width:14px;height:14px;flex-shrink:0}
-.member-slots{display:flex;flex-direction:column;gap:8px}
-.member-slot {display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--surface2);border:1.5px solid var(--border);}
-.slot-num {
-  width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.member-slot select{flex:1;background:transparent;border:none;font-size:13px;color:var(--text);cursor:pointer}
-.slot-remove{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;padding:2px}
-.slot-remove:hover{color:var(--red)}
-.add-slot-btn {
-  padding:8px;border-radius:7px;border:1.5px dashed var(--border);background:transparent;font-size:12.5px;font-weight:500;color:var(--text-muted);cursor:pointer;width:100%;transition:all var(--transition);
-}
-.add-slot-btn:hover{border-color:var(--mint);color:var(--mint)}
-.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast {
-  padding:12px 16px;border-radius:8px;box-shadow:var(--shadow-lg);font-size:13px;font-weight:500;max-width:320px;display:flex;align-items:center;gap:8px;animation:slideInToast 0.25s ease forwards;
-}
-.toast.success{background:#fff;border-left:3px solid var(--mint);color:var(--text)}
-.toast.error{background:#fff;border-left:3px solid var(--red);color:var(--text)}
-.toast.info{background:#fff;border-left:3px solid var(--blue);color:var(--text)}
-@keyframes slideInToast{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.spinner {
-  width:20px;height:20px;border-radius:50%;border:2.5px solid var(--border);border-top-color:var(--mint);animation:spin 0.7s linear infinite;display:inline-block;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-overlay {display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted);gap:10px;font-size:13px;}
-.divider{height:1px;background:var(--border-light);margin:12px 0}
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
-::-webkit-scrollbar-thumb:hover{background:#94a3b8}
-</style>
-</head>
-<body>
-
-<nav class="navbar">
-  <div class="navbar-brand">
-    <div class="logo">🎮</div>
-    게임 파티 스케줄러
-  </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('schedule')" id="tab-schedule">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      스케줄
-    </button>
-    <button class="nav-tab" onclick="switchTab('parties')" id="tab-parties">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      파티 목록
-    </button>
-    <button class="nav-tab" onclick="switchTab('characters')" id="tab-characters">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      캐릭터 관리
-    </button>
-  </div>
-  <button class="nav-settings" title="설정" onclick="alert('설정 기능은 준비 중입니다.')">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-  </button>
-</nav>
-
-<div class="tab-content active" id="content-schedule">
-<div class="page-container">
-  <div class="schedule-top">
-    <div class="schedule-title-area">
-      <h2>주간 스케줄</h2>
-      <p>파티별 레이드 일정 관리</p>
-    </div>
-    <div class="memo-box">
-      <div class="memo-box-header">
-        <div class="memo-box-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          참고 메모 <span id="memo-count" style="font-weight:400;color:var(--text-muted);font-size:12px">(0)</span>
-        </div>
-        <button class="btn btn-orange btn-sm" onclick="openMemoModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          + 추가
-        </button>
-      </div>
-      <div class="memo-chips" id="memo-chips">
-        <span class="memo-empty">메모가 없습니다. 추가 버튼으로 플레이어 메모를 등록하세요.</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="schedule-action-bar">
-    <div class="action-bar-left">
-      <h3>이번 주 일정</h3>
-      <button class="btn-time-edit" id="timeEditBtn" onclick="toggleTimeEdit()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        시간 수정
-        <svg id="timeEditArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-    </div>
-    <button class="btn btn-mint" onclick="openScheduleAddModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      + 스케줄 추가
-    </button>
-  </div>
-
-  <div class="schedule-wrapper">
-    <table class="schedule-grid" id="scheduleGrid">
-      <thead>
-        <tr>
-          <th>시간</th>
-          <th>월요일</th><th>화요일</th><th>수요일</th>
-          <th>목요일</th><th>금요일</th><th>토요일</th><th>일요일</th>
-        </tr>
-      </thead>
-      <tbody id="scheduleBody">
-        <tr><td colspan="8"><div class="loading-overlay"><div class="spinner"></div> 불러오는 중...</div></td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-</div>
-
-<div class="tab-content" id="content-parties">
-<div class="page-container">
-  <div class="page-header">
-    <h1>파티 목록</h1>
-    <p>레이드별 파티 구성을 확인하고 관리하세요</p>
-  </div>
-  <div class="section-header">
-    <h3 id="party-count-label">전체 파티 (0개)</h3>
-    <button class="btn btn-blue" onclick="openPartyModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
-      새 파티 만들기
-    </button>
-  </div>
-  <div class="parties-grid" id="partiesGrid">
-    <div class="loading-overlay"><div class="spinner"></div> 불러오는 중...</div>
-  </div>
-</div>
-</div>
-
-<div class="tab-content" id="content-characters">
-<div class="page-container">
-  <div class="page-header">
-    <h1>캐릭터 관리</h1>
-    <p>플레이어별 캐릭터 정보를 관리하세요</p>
-  </div>
-  <div class="section-header">
-    <h3 id="player-count-label">전체 플레이어 (0명)</h3>
-    <button class="btn btn-blue" onclick="openPlayerModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
-      플레이어 추가
-    </button>
-  </div>
-  <div class="players-grid" id="playersGrid">
-    <div class="loading-overlay"><div class="spinner"></div> 불러오는 중...</div>
-  </div>
-</div>
-</div>
-
-<div class="modal-overlay" id="playerModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="playerModalTitle">플레이어 추가</h3>
-      <button class="modal-close" onclick="closeModal('playerModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>플레이어명 *</label>
-        <input type="text" class="form-control" id="playerName" placeholder="플레이어 이름 입력">
-        <div class="form-error" id="playerNameError"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('playerModal')">취소</button>
-      <button class="btn btn-blue" onclick="savePlayer()">저장</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="charModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="charModalTitle">캐릭터 추가</h3>
-      <button class="modal-close" onclick="closeModal('charModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>캐릭터명 *</label>
-        <input type="text" class="form-control" id="charName" placeholder="캐릭터 이름 입력">
-        <div class="form-error" id="charNameError"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>레벨 *</label>
-          <input type="number" class="form-control" id="charLevel" placeholder="예: 1690" min="1" max="9999">
-        </div>
-        <div class="form-group">
-          <label>직업/역할</label>
-          <select class="form-control" id="charRole">
-            <option value="">선택 안함</option>
-            <option>전사</option><option>마법사</option><option>궁수</option>
-            <option>힐러</option><option>탱커</option><option>서포터</option>
-            <option>암살자</option><option>딜러</option><option>기타</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('charModal')">취소</button>
-      <button class="btn btn-blue" onclick="saveChar()">저장</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="partyModal">
-  <div class="modal modal-lg">
-    <div class="modal-header">
-      <h3 id="partyModalTitle">새 파티 만들기</h3>
-      <button class="modal-close" onclick="closeModal('partyModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>파티명 *</label>
-        <input type="text" class="form-control" id="partyName" placeholder="예: A파티, C파티">
-        <div class="form-error" id="partyNameError"></div>
-      </div>
-      <div class="form-group">
-        <label>레이드 선택</label>
-        <select class="form-control" id="partyRaid">
-          <option value="">레이드 선택 (선택)</option>
-        </select>
-      </div>
-      <div class="divider"></div>
-      <div class="form-group">
-        <label>파티원 구성 (4명 권장)</label>
-        <div class="form-hint" style="margin-bottom:8px">한 파티에 동일 플레이어의 캐릭터는 1개만 배치 가능합니다.</div>
-        <div class="member-slots" id="memberSlots"></div>
-        <button class="add-slot-btn" onclick="addMemberSlot()" style="margin-top:8px">
-          + 파티원 슬롯 추가
-        </button>
-        <div class="form-error" id="partyMembersError"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('partyModal')">취소</button>
-      <button class="btn btn-blue" onclick="saveParty()">저장</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="scheduleModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="scheduleModalTitle">스케줄 추가</h3>
-      <button class="modal-close" onclick="closeModal('scheduleModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>파티 선택 *</label>
-        <select class="form-control" id="schedParty">
-          <option value="">파티 선택</option>
-        </select>
-        <div class="form-error" id="schedPartyError"></div>
-      </div>
-      <div class="form-group">
-        <label>요일 *</label>
-        <select class="form-control" id="schedDay">
-          <option value="1">월요일</option><option value="2">화요일</option>
-          <option value="3">수요일</option><option value="4">목요일</option>
-          <option value="5">금요일</option><option value="6">토요일</option>
-          <option value="7">일요일</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>시작 시간 *</label>
-          <input type="time" class="form-control" id="schedStart" value="21:00">
-        </div>
-        <div class="form-group">
-          <label>종료 시간 *</label>
-          <input type="time" class="form-control" id="schedEnd" value="23:00">
-        </div>
-      </div>
-      <div class="form-hint">종료 시간은 시작 시간과 같을 수 없습니다. 자정을 넘기는 일정도 저장 가능합니다.</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('scheduleModal')">취소</button>
-      <button class="btn btn-mint" onclick="saveSchedule()">저장</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="detailModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="detailModalTitle">파티 상세</h3>
-      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
-    </div>
-    <div class="modal-body" id="detailModalBody"></div>
-    <div class="modal-footer" id="detailModalFooter">
-      <button class="btn btn-ghost btn-sm" onclick="editScheduleFromDetail()">일정 수정</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteScheduleFromDetail()">일정 삭제</button>
-      <button class="btn btn-ghost" onclick="closeModal('detailModal')">닫기</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="memoModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3>참고 메모 추가</h3>
-      <button class="modal-close" onclick="closeModal('memoModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>플레이어 선택 *</label>
-        <select class="form-control" id="memoPlayer">
-          <option value="">플레이어 선택</option>
-        </select>
-        <div class="form-error" id="memoPlayerError"></div>
-      </div>
-      <div class="form-group">
-        <label>메모 내용 *</label>
-        <input type="text" class="form-control" id="memoContent" placeholder="예: 이번주 토요일 불가">
-        <div class="form-error" id="memoContentError"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('memoModal')">취소</button>
-      <button class="btn btn-orange" onclick="saveMemo()">추가</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast-container" id="toastContainer"></div>
-
 <script>
 // =====================================================
 // Supabase 설정
@@ -644,9 +5,6 @@ a{text-decoration:none;color:inherit}
 const SUPABASE_URL = 'https://rkrwcvzvhlhuiqtswhdd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrcndjdnp2aGxodWlxdHN3aGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjI3MzksImV4cCI6MjA4ODg5ODczOX0.OCePvmiPhwAaAnstWUSqJdMBAqwFcfbTpahBm21P5wA';
 
-// =====================================================
-// 상태
-// =====================================================
 let supabase = null;
 let isSupabaseConnected = false;
 let currentTab = 'schedule';
@@ -660,7 +18,7 @@ let state = {
   scheduleSlots: [],
   attendance: [],
   weeklyNotes: [],
-  timeSlots: generateDefaultTimeSlots(),
+  timeSlots: [],
   timeEditMode: false,
   editingPlayerId: null,
   editingCharId: null,
@@ -671,9 +29,6 @@ let state = {
   _charPlayerId: null
 };
 
-// =====================================================
-// 기본 시간 생성
-// =====================================================
 function generateDefaultTimeSlots() {
   const slots = [];
   let h = 10, m = 30;
@@ -688,15 +43,35 @@ function generateDefaultTimeSlots() {
   return slots;
 }
 
-// =====================================================
-// 데모 데이터
-// =====================================================
+function resetState() {
+  state.players = [];
+  state.characters = [];
+  state.raids = [];
+  state.parties = [];
+  state.partyMembers = [];
+  state.scheduleSlots = [];
+  state.attendance = [];
+  state.weeklyNotes = [];
+  state.timeSlots = generateDefaultTimeSlots();
+  state.timeEditMode = false;
+  state.editingPlayerId = null;
+  state.editingCharId = null;
+  state.editingPartyId = null;
+  state.editingScheduleId = null;
+  state.currentDetailSlotId = null;
+  state.editingPartyMemberSlots = [];
+  state._charPlayerId = null;
+}
+
 function loadDemoData() {
+  resetState();
+
   const p1='p1',p2='p2',p3='p3',p4='p4';
   state.players = [
     {id:p1,name:'플레이어1'},{id:p2,name:'플레이어2'},
     {id:p3,name:'플레이어3'},{id:p4,name:'플레이어4'}
   ];
+
   const c1='c1',c2='c2',c3='c3',c4='c4',c5='c5',c6='c6',c7='c7',c8='c8';
   state.characters = [
     {id:c1,player_id:p1,name:'워리어',level:1690,role:'전사'},
@@ -708,16 +83,19 @@ function loadDemoData() {
     {id:c7,player_id:p4,name:'서포터',level:1680,role:'서포터'},
     {id:c8,player_id:p4,name:'어쌔신',level:1640,role:'암살자'}
   ];
+
   state.raids = [
     {id:'r1',name:'레이드 A',min_level:1680,max_level:1700},
     {id:'r2',name:'레이드 B',min_level:1640,max_level:1660},
     {id:'r3',name:'레이드 C',min_level:1700,max_level:1720}
   ];
+
   const pa='pa',pb='pb';
   state.parties = [
     {id:pa,name:'A파티',raid_id:'r1',max_members:4},
     {id:pb,name:'B파티',raid_id:'r2',max_members:4}
   ];
+
   const m1='m1',m2='m2',m3='m3',m4='m4',m5='m5',m6='m6',m7='m7',m8='m8';
   state.partyMembers = [
     {id:m1,party_id:pa,character_id:c1,slot_order:1},
@@ -729,24 +107,23 @@ function loadDemoData() {
     {id:m7,party_id:pb,character_id:c6,slot_order:3},
     {id:m8,party_id:pb,character_id:c8,slot_order:4}
   ];
+
   state.scheduleSlots = [
     {id:'s1',party_id:pa,day_of_week:6,start_time:'20:00:00',end_time:'22:00:00'},
     {id:'s2',party_id:pa,day_of_week:3,start_time:'21:00:00',end_time:'23:00:00'},
     {id:'s3',party_id:pb,day_of_week:4,start_time:'21:00:00',end_time:'23:00:00'}
   ];
+
   state.weeklyNotes = [
     {id:'n1',player_id:p1,note:'이번주 토요일 불가',week_label:'이번 주'},
     {id:'n2',player_id:p2,note:'일요일 9시 이후 불가',week_label:'이번 주'}
   ];
 }
 
-// =====================================================
-// Supabase 초기화
-// =====================================================
 function initSupabase() {
   try {
     if (!window.supabase || !window.supabase.createClient) {
-      throw new Error('Supabase 라이브러리를 불러오지 못했습니다.');
+      throw new Error('Supabase 라이브러리 로드 실패');
     }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     isSupabaseConnected = true;
@@ -758,33 +135,38 @@ function initSupabase() {
   }
 }
 
-// =====================================================
-// 공통 유틸
-// =====================================================
 function uid() {
   return 'local-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 }
+
+function normalizeTime(t) {
+  if (!t) return '';
+  return String(t).substring(0, 5);
+}
+
 function formatTime(t) {
   if (!t) return '';
-  const [hh, mm] = t.split(':');
+  const raw = normalizeTime(t);
+  const [hh, mm] = raw.split(':');
   let h = parseInt(hh, 10);
   const period = h < 12 ? 'AM' : 'PM';
   if (h === 0) h = 12;
   else if (h > 12) h -= 12;
   return `${h}:${mm} ${period}`;
 }
+
 function timeToMinutes(t) {
-  const [h, m] = t.substring(0,5).split(':').map(Number);
+  const raw = normalizeTime(t);
+  const [h, m] = raw.split(':').map(Number);
   return h * 60 + m;
 }
+
 function minutesToTime(mins) {
   const h = Math.floor(mins / 60) % 24;
   const m = mins % 60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
-function normalizeTime(t) {
-  return t ? t.substring(0,5) : '';
-}
+
 function getPlayer(id) { return state.players.find(p => p.id === id); }
 function getCharacter(id) { return state.characters.find(c => c.id === id); }
 function getParty(id) { return state.parties.find(p => p.id === id); }
@@ -794,8 +176,10 @@ function getPartyMembers(partyId) {
     .filter(m => m.party_id === partyId)
     .sort((a,b) => a.slot_order - b.slot_order);
 }
+
 function showToast(msg, type='success') {
   const tc = document.getElementById('toastContainer');
+  if (!tc) return;
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
@@ -807,23 +191,29 @@ function showToast(msg, type='success') {
     setTimeout(() => t.remove(), 300);
   }, 3000);
 }
+
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
+
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
   document.body.style.overflow = '';
 }
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', function(e) {
-    if (e.target === this) closeModal(this.id);
-  });
-});
 
-// =====================================================
-// DB 헬퍼
-// =====================================================
+function bindModalCloseEvents() {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) closeModal(this.id);
+    });
+  });
+}
+
 async function dbFetch(table, query={}) {
   if (!isSupabaseConnected) return null;
   try {
@@ -844,6 +234,7 @@ async function dbFetch(table, query={}) {
     return null;
   }
 }
+
 async function dbInsert(table, values) {
   if (!isSupabaseConnected) return null;
   try {
@@ -856,6 +247,7 @@ async function dbInsert(table, values) {
     return null;
   }
 }
+
 async function dbUpdate(table, match, values) {
   if (!isSupabaseConnected) return null;
   try {
@@ -872,6 +264,7 @@ async function dbUpdate(table, match, values) {
     return null;
   }
 }
+
 async function dbDelete(table, match) {
   if (!isSupabaseConnected) return false;
   try {
@@ -889,57 +282,6 @@ async function dbDelete(table, match) {
   }
 }
 
-// =====================================================
-// 데이터 로드
-// =====================================================
-async function loadPlayers() {
-  const d = await dbFetch('players', { order: { col:'created_at', asc:true } });
-  if (d) state.players = d;
-}
-async function loadCharacters() {
-  const d = await dbFetch('characters', { order: { col:'level', asc:false } });
-  if (d) state.characters = d;
-}
-async function loadRaids() {
-  const d = await dbFetch('raids', { order: { col:'min_level', asc:true } });
-  if (d) state.raids = d;
-}
-async function loadParties() {
-  const d = await dbFetch('parties', { order: { col:'name', asc:true } });
-  if (d) state.parties = d;
-}
-async function loadPartyMembers() {
-  const d = await dbFetch('party_members', { order: { col:'slot_order', asc:true } });
-  if (d) state.partyMembers = d;
-}
-async function loadScheduleSlots() {
-  const d = await dbFetch('schedule_slots', { order: { col:'day_of_week', asc:true } });
-  if (d) state.scheduleSlots = d;
-}
-async function loadAttendance() {
-  const d = await dbFetch('attendance');
-  if (d) state.attendance = d;
-}
-async function loadWeeklyNotes() {
-  const d = await dbFetch('weekly_player_notes', { order: { col:'created_at', asc:true } });
-  if (d) state.weeklyNotes = d;
-}
-async function loadTimeSettings() {
-  if (!isSupabaseConnected) return;
-  try {
-    const { data, error } = await supabase
-      .from('schedule_settings')
-      .select('*')
-      .eq('setting_key', 'default')
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
-    if (data && Array.isArray(data.time_slots)) {
-      state.timeSlots = data.time_slots;
-    }
-  } catch (e) {
-    console.error('시간 설정 로드 실패', e);
-  }
-}
 async function ensureTimeSettingsRow() {
   if (!isSupabaseConnected) return;
   try {
@@ -947,67 +289,107 @@ async function ensureTimeSettingsRow() {
       .from('schedule_settings')
       .select('setting_key')
       .eq('setting_key', 'default')
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
+      .maybeSingle();
+
+    if (error) throw error;
+
     if (!data) {
-      await supabase.from('schedule_settings').insert({
-        setting_key: 'default',
-        time_slots: generateDefaultTimeSlots()
-      });
+      const { error: insertError } = await supabase
+        .from('schedule_settings')
+        .insert({
+          setting_key: 'default',
+          time_slots: generateDefaultTimeSlots()
+        });
+      if (insertError) throw insertError;
     }
   } catch (e) {
     console.error('schedule_settings 초기화 실패', e);
   }
 }
+
 async function loadAllData() {
-  if (isSupabaseConnected) {
-    await ensureTimeSettingsRow();
-    await Promise.all([
-      loadPlayers(),
-      loadCharacters(),
-      loadRaids(),
-      loadParties(),
-      loadPartyMembers(),
-      loadScheduleSlots(),
-      loadAttendance(),
-      loadWeeklyNotes(),
-      loadTimeSettings()
-    ]);
-  } else {
+  resetState();
+
+  if (!isSupabaseConnected) {
     loadDemoData();
+    return;
+  }
+
+  try {
+    await ensureTimeSettingsRow();
+
+    const [
+      players,
+      characters,
+      raids,
+      parties,
+      partyMembers,
+      scheduleSlots,
+      attendance,
+      weeklyNotes,
+      scheduleSettings
+    ] = await Promise.all([
+      dbFetch('players', { order: { col:'created_at', asc:true } }),
+      dbFetch('characters', { order: { col:'level', asc:false } }),
+      dbFetch('raids', { order: { col:'min_level', asc:true } }),
+      dbFetch('parties', { order: { col:'name', asc:true } }),
+      dbFetch('party_members', { order: { col:'slot_order', asc:true } }),
+      dbFetch('schedule_slots', { order: { col:'day_of_week', asc:true } }),
+      dbFetch('attendance'),
+      dbFetch('weekly_player_notes', { order: { col:'created_at', asc:true } }),
+      dbFetch('schedule_settings', { eq: { setting_key: 'default' } })
+    ]);
+
+    state.players = players || [];
+    state.characters = characters || [];
+    state.raids = raids || [];
+    state.parties = parties || [];
+    state.partyMembers = partyMembers || [];
+    state.scheduleSlots = scheduleSlots || [];
+    state.attendance = attendance || [];
+    state.weeklyNotes = weeklyNotes || [];
+
+    if (scheduleSettings && scheduleSettings.length > 0 && Array.isArray(scheduleSettings[0].time_slots)) {
+      state.timeSlots = scheduleSettings[0].time_slots;
+    } else {
+      state.timeSlots = generateDefaultTimeSlots();
+    }
+  } catch (e) {
+    console.error('전체 데이터 로드 실패:', e);
+    loadDemoData();
+    showToast('DB 로드 실패로 데모 데이터로 전환되었습니다.', 'info');
   }
 }
+
+async function reloadAndRender() {
+  await loadAllData();
+  renderAll();
+  switchTab(currentTab);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+  const content = document.getElementById('content-' + tab);
+  const button = document.getElementById('tab-' + tab);
+
+  if (content) content.classList.add('active');
+  if (button) button.classList.add('active');
+}
+
 function renderAll() {
   renderSchedule();
   renderParties();
   renderCharacters();
 }
-async function reloadAndRender() {
-  await loadAllData();
-  renderAll();
-}
 
-// =====================================================
-// 탭 전환
-// =====================================================
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('content-' + tab).classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
-}
-
-// =====================================================
-// 스케줄
-// =====================================================
-function renderSchedule() {
-  renderWeeklyNotes();
-  renderScheduleGrid();
-}
 function renderWeeklyNotes() {
   const chips = document.getElementById('memo-chips');
   const count = document.getElementById('memo-count');
+  if (!chips || !count) return;
+
   count.textContent = `(${state.weeklyNotes.length})`;
 
   if (state.weeklyNotes.length === 0) {
@@ -1024,6 +406,7 @@ function renderWeeklyNotes() {
     </div>`;
   }).join('');
 }
+
 function getSortedTimeSlots() {
   return [...state.timeSlots].sort((a,b) => {
     const am = timeToMinutes(a);
@@ -1033,9 +416,11 @@ function getSortedTimeSlots() {
     return adjA - adjB;
   });
 }
+
 function renderScheduleGrid() {
   const tbody = document.getElementById('scheduleBody');
   const grid = document.getElementById('scheduleGrid');
+  if (!tbody || !grid) return;
 
   if (state.timeEditMode) grid.classList.add('time-edit-active');
   else grid.classList.remove('time-edit-active');
@@ -1045,8 +430,7 @@ function renderScheduleGrid() {
 
   const slotMap = {};
   state.scheduleSlots.forEach(slot => {
-    const startH = normalizeTime(slot.start_time);
-    const key = `${slot.day_of_week}_${startH}`;
+    const key = `${slot.day_of_week}_${normalizeTime(slot.start_time)}`;
     if (!slotMap[key]) slotMap[key] = [];
     slotMap[key].push(slot);
   });
@@ -1060,18 +444,20 @@ function renderScheduleGrid() {
     const cells = days.map(day => {
       const key = `${day}_${time}`;
       const slots = slotMap[key] || [];
+
       if (slots.length === 0) {
         return `<td><div class="schedule-cell"><span class="schedule-cell-empty" onclick="quickAddSchedule(${day},'${time}')" title="클릭하여 일정 추가">—</span></div></td>`;
       }
+
       const blocks = slots.map(slot => {
         const party = getParty(slot.party_id);
         const absentCount = absentCountMap[slot.id] || 0;
-        const hasAbsent = absentCount > 0;
-        return `<button class="party-block ${hasAbsent ? 'has-absent' : ''}" onclick="openScheduleDetail('${slot.id}')">
+        return `<button class="party-block ${absentCount > 0 ? 'has-absent' : ''}" onclick="openScheduleDetail('${slot.id}')">
           ${party ? party.name : '?'}
-          ${hasAbsent ? `<span class="absent-badge">${absentCount}</span>` : ''}
+          ${absentCount > 0 ? `<span class="absent-badge">${absentCount}</span>` : ''}
         </button>`;
       }).join('');
+
       return `<td><div class="schedule-cell">${blocks}</div></td>`;
     }).join('');
 
@@ -1091,10 +477,9 @@ function renderScheduleGrid() {
     const lastTime = sortedSlots[sortedSlots.length - 1];
     const lastMins = timeToMinutes(lastTime);
     const adjLast = lastMins < 360 ? lastMins + 1440 : lastMins;
-    const newMins = (adjLast + 30) % 1440;
-    const newTime = minutesToTime(newMins);
+    const newTime = minutesToTime((adjLast + 30) % 1440);
+
     const addRow = document.createElement('tr');
-    addRow.id = 'addTimeRow';
     addRow.style.display = state.timeEditMode ? '' : 'none';
     addRow.innerHTML = `<td colspan="8" style="text-align:center;padding:8px;border-top:1px dashed var(--border)">
       <button onclick="addTimeSlotEnd()" class="btn btn-ghost btn-sm" style="color:var(--mint);font-size:12px">
@@ -1104,60 +489,161 @@ function renderScheduleGrid() {
     tbody.appendChild(addRow);
   }
 }
+
+function renderSchedule() {
+  renderWeeklyNotes();
+  renderScheduleGrid();
+}
+
+function renderParties() {
+  const grid = document.getElementById('partiesGrid');
+  const label = document.getElementById('party-count-label');
+  if (!grid || !label) return;
+
+  label.textContent = `전체 파티 (${state.parties.length}개)`;
+
+  if (state.parties.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <p>파티가 없습니다. 새 파티를 만들어보세요!</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = state.parties.map(party => {
+    const raid = getRaid(party.raid_id);
+    const members = getPartyMembers(party.id);
+
+    const memberRows = members.map(pm => {
+      const char = getCharacter(pm.character_id);
+      const player = char ? getPlayer(char.player_id) : null;
+      const warn = raid && char && (char.level < raid.min_level || char.level > raid.max_level);
+
+      return `<div class="member-row">
+        <div class="member-avatar" style="font-size:10px">${player ? player.name.charAt(0) : '?'}</div>
+        <div class="member-info">
+          <div class="member-player">${player ? player.name : '?'}</div>
+          <div class="member-char">${char ? char.name : '?'}${char && char.role ? ' · ' + char.role : ''}</div>
+        </div>
+        <span class="level-badge ${warn ? 'warn' : ''}">Lv.${char ? char.level : '?'}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="party-card">
+      <div class="party-card-header">
+        <h4>${party.name}</h4>
+        <div class="party-card-actions">
+          <button class="btn-icon" onclick="openPartyModal('${party.id}')" title="수정">✎</button>
+          <button class="btn-icon" onclick="deleteParty('${party.id}')" title="삭제" style="color:var(--red)">🗑</button>
+        </div>
+      </div>
+      <div class="party-meta">
+        <div class="party-meta-row">레이드: <strong>${raid ? raid.name : '미지정'}</strong></div>
+        <div class="party-meta-row">레벨: <strong>${raid ? raid.min_level + '-' + raid.max_level : '미지정'}</strong></div>
+      </div>
+      <div class="party-members-label">파티원 (${members.length}명)</div>
+      ${memberRows}
+    </div>`;
+  }).join('');
+}
+
+function renderCharacters() {
+  const grid = document.getElementById('playersGrid');
+  const label = document.getElementById('player-count-label');
+  if (!grid || !label) return;
+
+  label.textContent = `전체 플레이어 (${state.players.length}명)`;
+
+  if (state.players.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <p>플레이어가 없습니다. 플레이어 추가 버튼을 눌러 시작하세요.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = state.players.map(player => {
+    const chars = state.characters.filter(c => c.player_id === player.id);
+
+    const charRows = chars.map(c => `
+      <div class="char-row">
+        <div class="char-name">${c.name}${c.role ? `<span class="char-role"> · ${c.role}</span>` : ''}</div>
+        <span class="level-badge">Lv.${c.level}</span>
+        <div class="char-actions">
+          <button class="btn-icon btn-sm" onclick="openCharModal('${player.id}','${c.id}')" title="수정">✎</button>
+          <button class="btn-icon btn-sm" onclick="deleteChar('${c.id}')" title="삭제" style="color:var(--red)">🗑</button>
+        </div>
+      </div>
+    `).join('');
+
+    return `<div class="player-card">
+      <div class="player-card-header">
+        <div class="player-avatar">${player.name.charAt(0)}</div>
+        <h4>${player.name}</h4>
+        <button class="btn-icon" onclick="openPlayerModal('${player.id}')" title="수정">✎</button>
+        <button class="btn-icon" onclick="deletePlayer('${player.id}')" title="삭제" style="color:var(--red)">🗑</button>
+      </div>
+      <div class="player-char-count">보유 캐릭터 (${chars.length}개)</div>
+      ${charRows}
+      <button class="add-char-btn" onclick="openCharModal('${player.id}')">+ 캐릭터 추가</button>
+    </div>`;
+  }).join('');
+}
+
 function toggleTimeEdit() {
   state.timeEditMode = !state.timeEditMode;
   const btn = document.getElementById('timeEditBtn');
   const arrow = document.getElementById('timeEditArrow');
-  if (state.timeEditMode) {
-    btn.classList.add('active');
-    arrow.style.transform = 'rotate(180deg)';
-  } else {
-    btn.classList.remove('active');
-    arrow.style.transform = '';
+
+  if (btn) {
+    if (state.timeEditMode) btn.classList.add('active');
+    else btn.classList.remove('active');
   }
+  if (arrow) {
+    arrow.style.transform = state.timeEditMode ? 'rotate(180deg)' : '';
+  }
+
   renderScheduleGrid();
 }
+
 async function saveTimeSettings() {
   if (!isSupabaseConnected) return;
-  const d = await dbUpdate('schedule_settings', { setting_key: 'default' }, { time_slots: state.timeSlots });
-  if (!d) showToast('시간 설정 저장 실패', 'error');
+  await dbUpdate('schedule_settings', { setting_key: 'default' }, { time_slots: state.timeSlots });
 }
+
 function addTimeSlotBefore(time) {
-  const currentSorted = getSortedTimeSlots();
-  const idx = currentSorted.indexOf(time);
   const mins = timeToMinutes(time);
   const adj = mins < 360 ? mins + 1440 : mins;
-  const newMins = (adj - 30 + 1440) % 1440;
-  const newTime = minutesToTime(newMins);
+  const newTime = minutesToTime((adj - 30 + 1440) % 1440);
 
   if (state.timeSlots.includes(newTime)) {
     showToast('이미 존재하는 시간입니다.', 'info');
     return;
   }
 
-  const originalIdx = state.timeSlots.indexOf(time);
-  if (originalIdx >= 0) state.timeSlots.splice(originalIdx, 0, newTime);
+  const idx = state.timeSlots.indexOf(time);
+  if (idx >= 0) state.timeSlots.splice(idx, 0, newTime);
   else state.timeSlots.push(newTime);
 
   saveTimeSettings();
   renderScheduleGrid();
 }
+
 function addTimeSlotEnd() {
-  const sortedSlots = getSortedTimeSlots();
-  const last = sortedSlots[sortedSlots.length - 1];
+  const sorted = getSortedTimeSlots();
+  const last = sorted[sorted.length - 1];
   const lastMins = timeToMinutes(last);
   const adjLast = lastMins < 360 ? lastMins + 1440 : lastMins;
-  const newMins = (adjLast + 30) % 1440;
-  const newTime = minutesToTime(newMins);
+  const newTime = minutesToTime((adjLast + 30) % 1440);
 
   if (state.timeSlots.includes(newTime)) {
     showToast('이미 존재하는 시간입니다.', 'info');
     return;
   }
+
   state.timeSlots.push(newTime);
   saveTimeSettings();
   renderScheduleGrid();
 }
+
 async function removeTimeSlot(time) {
   const hasSchedule = state.scheduleSlots.some(s => normalizeTime(s.start_time) === time);
   if (hasSchedule) {
@@ -1167,151 +653,48 @@ async function removeTimeSlot(time) {
     showToast('최소 2개 이상의 시간 슬롯이 필요합니다.', 'error');
     return;
   }
+
   state.timeSlots = state.timeSlots.filter(t => t !== time);
   await saveTimeSettings();
   renderScheduleGrid();
 }
 
-// =====================================================
-// 스케줄 상세
-// =====================================================
-function openScheduleDetail(slotId) {
-  const slot = state.scheduleSlots.find(s => s.id === slotId);
-  if (!slot) return;
-
-  state.currentDetailSlotId = slotId;
-  const party = getParty(slot.party_id);
-  const raid = party ? getRaid(party.raid_id) : null;
-  const members = getPartyMembers(slot.party_id);
-  const dayNames = ['','월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
-
-  document.getElementById('detailModalTitle').textContent = party ? party.name : '파티 상세';
-
-  const absentMembers = state.attendance.filter(a => a.schedule_slot_id === slotId && a.is_absent);
-  const absentMemberIds = new Set(absentMembers.map(a => a.party_member_id));
-
-  const memberRows = members.map(pm => {
-    const char = getCharacter(pm.character_id);
-    const player = char ? getPlayer(char.player_id) : null;
-    const isAbsent = absentMemberIds.has(pm.id);
-    const warn = raid && char && (char.level < raid.min_level || char.level > raid.max_level);
-
-    return `<div class="detail-member-row ${isAbsent ? 'absent' : ''}" id="dmr-${pm.id}" onclick="toggleAbsent('${slotId}','${pm.id}')">
-      <div class="member-avatar">${player ? player.name.charAt(0) : '?'}</div>
-      <div class="detail-member-info">
-        <div class="detail-member-name">${player ? player.name : '?'}${isAbsent ? ' (자리비움)' : ''}</div>
-        <div class="detail-member-char">${char ? char.name : '?'}${char && char.role ? ' · ' + char.role : ''}</div>
-      </div>
-      <span class="level-badge ${warn ? 'warn' : ''}">Lv.${char ? char.level : '?'}</span>
-      <button class="absent-toggle ${isAbsent ? 'on' : ''}" id="tog-${pm.id}" onclick="event.stopPropagation();toggleAbsent('${slotId}','${pm.id}')"></button>
-    </div>`;
-  }).join('');
-
-  const absentWarning = absentMembers.length > 0 ? `
-    <div class="absent-warning">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      ${absentMembers.length}명 자리비움 — 대체 인원 확인이 필요합니다
-    </div>` : '';
-
-  document.getElementById('detailModalBody').innerHTML = `
-    <div class="detail-meta">
-      <p>레이드: <strong>${raid ? raid.name : '미지정'}</strong></p>
-      <p>레벨 범위: <strong>${raid ? raid.min_level + '-' + raid.max_level : '미지정'}</strong></p>
-      <p style="font-size:12px;color:var(--text-muted)">${dayNames[slot.day_of_week]} ${formatTime(normalizeTime(slot.start_time))} ~ ${formatTime(normalizeTime(slot.end_time))}</p>
-    </div>
-    <div class="detail-hint">자리비움 표시를 클릭해 결석 여부를 표시하세요</div>
-    ${memberRows}
-    <div id="absentWarningArea">${absentWarning}</div>
-  `;
-  openModal('detailModal');
-}
-async function toggleAbsent(slotId, pmId) {
-  const existing = state.attendance.find(a => a.schedule_slot_id === slotId && a.party_member_id === pmId);
-  const newAbsent = existing ? !existing.is_absent : true;
-
-  if (isSupabaseConnected) {
-    if (existing) {
-      const d = await dbUpdate('attendance', { id: existing.id }, { is_absent: newAbsent });
-      if (!d) return;
-    } else {
-      const d = await dbInsert('attendance', { schedule_slot_id: slotId, party_member_id: pmId, is_absent: true });
-      if (!d) return;
-    }
-    await reloadAndRender();
-    openScheduleDetail(slotId);
-    return;
-  }
-
-  if (existing) existing.is_absent = newAbsent;
-  else state.attendance.push({ id: uid(), schedule_slot_id: slotId, party_member_id: pmId, is_absent: true });
-
-  renderScheduleGrid();
-  openScheduleDetail(slotId);
-}
-function editScheduleFromDetail() {
-  const slotId = state.currentDetailSlotId;
-  if (!slotId) return;
-  closeModal('detailModal');
-  openScheduleAddModal(slotId);
-}
-async function deleteScheduleFromDetail() {
-  const slotId = state.currentDetailSlotId;
-  if (!slotId) return;
-  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
-
-  if (isSupabaseConnected) {
-    const ok = await dbDelete('schedule_slots', { id: slotId });
-    if (!ok) return;
-    closeModal('detailModal');
-    await reloadAndRender();
-    showToast('일정이 삭제되었습니다.');
-    return;
-  }
-
-  state.scheduleSlots = state.scheduleSlots.filter(s => s.id !== slotId);
-  state.attendance = state.attendance.filter(a => a.schedule_slot_id !== slotId);
-  closeModal('detailModal');
-  renderScheduleGrid();
-  showToast('일정이 삭제되었습니다.');
-}
-
-// =====================================================
-// 스케줄 추가/수정
-// =====================================================
 function quickAddSchedule(day, time) {
   openScheduleAddModal(null, day, time);
 }
+
 function openScheduleAddModal(editId = null, preDay = null, preTime = null) {
   state.editingScheduleId = editId;
-  document.getElementById('scheduleModalTitle').textContent = editId ? '일정 수정' : '스케줄 추가';
+  const title = document.getElementById('scheduleModalTitle');
+  if (title) title.textContent = editId ? '일정 수정' : '스케줄 추가';
 
   const sel = document.getElementById('schedParty');
-  sel.innerHTML = '<option value="">파티 선택</option>' +
-    state.parties.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  document.getElementById('schedPartyError').textContent = '';
+  if (sel) {
+    sel.innerHTML = '<option value="">파티 선택</option>' +
+      state.parties.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+
+  const partyErr = document.getElementById('schedPartyError');
+  if (partyErr) partyErr.textContent = '';
 
   if (editId) {
     const slot = state.scheduleSlots.find(s => s.id === editId);
     if (slot) {
-      sel.value = slot.party_id;
+      if (sel) sel.value = slot.party_id;
       document.getElementById('schedDay').value = slot.day_of_week;
       document.getElementById('schedStart').value = normalizeTime(slot.start_time);
       document.getElementById('schedEnd').value = normalizeTime(slot.end_time);
     }
   } else {
-    sel.value = '';
+    if (sel) sel.value = '';
     document.getElementById('schedDay').value = preDay || '1';
     document.getElementById('schedStart').value = preTime || '21:00';
-    if (preTime) {
-      const mins = timeToMinutes(preTime);
-      document.getElementById('schedEnd').value = minutesToTime((mins + 120) % 1440);
-    } else {
-      document.getElementById('schedEnd').value = '23:00';
-    }
+    document.getElementById('schedEnd').value = preTime ? minutesToTime((timeToMinutes(preTime) + 120) % 1440) : '23:00';
   }
 
   openModal('scheduleModal');
 }
+
 async function saveSchedule() {
   const partyId = document.getElementById('schedParty').value;
   const day = parseInt(document.getElementById('schedDay').value, 10);
@@ -1331,24 +714,12 @@ async function saveSchedule() {
     return;
   }
 
-  document.getElementById('schedPartyError').textContent = '';
   const values = {
     party_id: partyId,
     day_of_week: day,
     start_time: startTime + ':00',
     end_time: endTime + ':00'
   };
-
-  const duplicate = state.scheduleSlots.find(s =>
-    s.party_id === partyId &&
-    Number(s.day_of_week) === day &&
-    normalizeTime(s.start_time) === startTime &&
-    s.id !== state.editingScheduleId
-  );
-  if (duplicate) {
-    showToast('같은 파티의 동일 시작 시간 일정이 이미 존재합니다.', 'error');
-    return;
-  }
 
   if (state.editingScheduleId) {
     if (isSupabaseConnected) {
@@ -1394,75 +765,99 @@ async function saveSchedule() {
   renderScheduleGrid();
 }
 
-// =====================================================
-// 파티
-// =====================================================
-function renderParties() {
-  const grid = document.getElementById('partiesGrid');
-  const label = document.getElementById('party-count-label');
-  label.textContent = `전체 파티 (${state.parties.length}개)`;
+function openScheduleDetail(slotId) {
+  const slot = state.scheduleSlots.find(s => s.id === slotId);
+  if (!slot) return;
 
-  if (state.parties.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <p>파티가 없습니다. 새 파티를 만들어보세요!</p>
+  state.currentDetailSlotId = slotId;
+  const party = getParty(slot.party_id);
+  const raid = party ? getRaid(party.raid_id) : null;
+  const members = getPartyMembers(slot.party_id);
+  const dayNames = ['','월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
+
+  document.getElementById('detailModalTitle').textContent = party ? party.name : '파티 상세';
+
+  const absentMembers = state.attendance.filter(a => a.schedule_slot_id === slotId && a.is_absent);
+  const absentMemberIds = new Set(absentMembers.map(a => a.party_member_id));
+
+  const memberRows = members.map(pm => {
+    const char = getCharacter(pm.character_id);
+    const player = char ? getPlayer(char.player_id) : null;
+    const isAbsent = absentMemberIds.has(pm.id);
+    return `<div class="detail-member-row ${isAbsent ? 'absent' : ''}" onclick="toggleAbsent('${slotId}','${pm.id}')">
+      <div class="member-avatar">${player ? player.name.charAt(0) : '?'}</div>
+      <div class="detail-member-info">
+        <div class="detail-member-name">${player ? player.name : '?'}${isAbsent ? ' (자리비움)' : ''}</div>
+        <div class="detail-member-char">${char ? char.name : '?'}${char && char.role ? ' · ' + char.role : ''}</div>
+      </div>
+      <button class="absent-toggle ${isAbsent ? 'on' : ''}" onclick="event.stopPropagation();toggleAbsent('${slotId}','${pm.id}')"></button>
     </div>`;
+  }).join('');
+
+  document.getElementById('detailModalBody').innerHTML = `
+    <div class="detail-meta">
+      <p>레이드: <strong>${raid ? raid.name : '미지정'}</strong></p>
+      <p>레벨 범위: <strong>${raid ? raid.min_level + '-' + raid.max_level : '미지정'}</strong></p>
+      <p style="font-size:12px;color:var(--text-muted)">${dayNames[slot.day_of_week]} ${formatTime(slot.start_time)} ~ ${formatTime(slot.end_time)}</p>
+    </div>
+    <div class="detail-hint">자리비움 표시를 클릭해 결석 여부를 표시하세요</div>
+    ${memberRows}
+  `;
+  openModal('detailModal');
+}
+
+async function toggleAbsent(slotId, pmId) {
+  const existing = state.attendance.find(a => a.schedule_slot_id === slotId && a.party_member_id === pmId);
+  const newAbsent = existing ? !existing.is_absent : true;
+
+  if (isSupabaseConnected) {
+    if (existing) {
+      const d = await dbUpdate('attendance', { id: existing.id }, { is_absent: newAbsent });
+      if (!d) return;
+    } else {
+      const d = await dbInsert('attendance', { schedule_slot_id: slotId, party_member_id: pmId, is_absent: true });
+      if (!d) return;
+    }
+    await reloadAndRender();
+    openScheduleDetail(slotId);
     return;
   }
 
-  grid.innerHTML = state.parties.map(party => {
-    const raid = getRaid(party.raid_id);
-    const members = getPartyMembers(party.id);
+  if (existing) existing.is_absent = newAbsent;
+  else state.attendance.push({ id: uid(), schedule_slot_id: slotId, party_member_id: pmId, is_absent: true });
 
-    const memberRows = members.map(pm => {
-      const char = getCharacter(pm.character_id);
-      const player = char ? getPlayer(char.player_id) : null;
-      const warn = raid && char && (char.level < raid.min_level || char.level > raid.max_level);
-
-      return `<div class="member-row">
-        <div class="member-avatar" style="font-size:10px">${player ? player.name.charAt(0) : '?'}</div>
-        <div class="member-info">
-          <div class="member-player">${player ? player.name : '?'}</div>
-          <div class="member-char">${char ? char.name : '?'}${char && char.role ? ' · ' + char.role : ''}</div>
-        </div>
-        <span class="level-badge ${warn ? 'warn' : ''}">Lv.${char ? char.level : '?'}</span>
-      </div>`;
-    }).join('');
-
-    const emptySlots = Array.from({ length: Math.max(0, 4 - members.length) }).map(() => `
-      <div class="member-row" style="opacity:0.4">
-        <div class="member-avatar" style="background:var(--border);border-color:var(--border-light)">—</div>
-        <div class="member-info"><div class="member-player">빈 슬롯</div></div>
-      </div>
-    `).join('');
-
-    return `<div class="party-card">
-      <div class="party-card-header">
-        <h4>${party.name}</h4>
-        <div class="party-card-actions">
-          <button class="btn-icon" onclick="openPartyModal('${party.id}')" title="수정">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="btn-icon" onclick="deleteParty('${party.id}')" title="삭제" style="color:var(--red)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="party-meta">
-        <div class="party-meta-row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
-          레이드: <strong>${raid ? raid.name : '미지정'}</strong>
-        </div>
-        <div class="party-meta-row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          레벨: <strong>${raid ? raid.min_level + '-' + raid.max_level : '미지정'}</strong>
-        </div>
-      </div>
-      <div class="party-members-label">파티원 (${members.length}명)</div>
-      ${memberRows}${emptySlots}
-    </div>`;
-  }).join('');
+  renderScheduleGrid();
+  openScheduleDetail(slotId);
 }
+
+function editScheduleFromDetail() {
+  const slotId = state.currentDetailSlotId;
+  if (!slotId) return;
+  closeModal('detailModal');
+  openScheduleAddModal(slotId);
+}
+
+async function deleteScheduleFromDetail() {
+  const slotId = state.currentDetailSlotId;
+  if (!slotId) return;
+  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+
+  if (isSupabaseConnected) {
+    const ok = await dbDelete('schedule_slots', { id: slotId });
+    if (!ok) return;
+    closeModal('detailModal');
+    await reloadAndRender();
+    showToast('일정이 삭제되었습니다.');
+    return;
+  }
+
+  state.scheduleSlots = state.scheduleSlots.filter(s => s.id !== slotId);
+  state.attendance = state.attendance.filter(a => a.schedule_slot_id !== slotId);
+  closeModal('detailModal');
+  renderScheduleGrid();
+  showToast('일정이 삭제되었습니다.');
+}
+
 function openPartyModal(editId = null) {
   state.editingPartyId = editId;
   document.getElementById('partyModalTitle').textContent = editId ? '파티 수정' : '새 파티 만들기';
@@ -1494,20 +889,23 @@ function openPartyModal(editId = null) {
   renderMemberSlots();
   openModal('partyModal');
 }
+
 function renderMemberSlots() {
   const cont = document.getElementById('memberSlots');
+  if (!cont) return;
+
   cont.innerHTML = state.editingPartyMemberSlots.map((slot, i) => {
-    const opts = buildCharacterOptions(slot.charId, slot.tempId);
     return `<div class="member-slot">
       <div class="slot-num">${i + 1}</div>
       <select onchange="updateMemberSlot('${slot.tempId}', this.value)" style="flex:1;background:transparent;border:none;font-size:13px;color:var(--text);cursor:pointer;padding:4px">
         <option value="">캐릭터 선택</option>
-        ${opts}
+        ${buildCharacterOptions(slot.charId, slot.tempId)}
       </select>
       <button class="slot-remove" onclick="removeMemberSlot('${slot.tempId}')" title="슬롯 제거">✕</button>
     </div>`;
   }).join('');
 }
+
 function buildCharacterOptions(selectedCharId, currentSlotTempId) {
   const usedCharIds = new Set(
     state.editingPartyMemberSlots
@@ -1525,14 +923,15 @@ function buildCharacterOptions(selectedCharId, currentSlotTempId) {
   return state.players.map(player => {
     const chars = state.characters.filter(c => c.player_id === player.id);
     if (chars.length === 0) return '';
-    const charOpts = chars.map(c => {
+    const options = chars.map(c => {
       const selected = c.id === selectedCharId ? 'selected' : '';
       const disabled = usedCharIds.has(c.id) ? 'disabled' : '';
       return `<option value="${c.id}" ${selected} ${disabled}>[${player.name}] ${c.name} Lv.${c.level}${c.role ? ' (' + c.role + ')' : ''}</option>`;
     }).join('');
-    return `<optgroup label="${player.name}${usedPlayerIds.has(player.id) ? ' ⚠️이미 배치됨' : ''}">${charOpts}</optgroup>`;
+    return `<optgroup label="${player.name}${usedPlayerIds.has(player.id) ? ' ⚠️이미 배치됨' : ''}">${options}</optgroup>`;
   }).join('');
 }
+
 function updateMemberSlot(tempId, charId) {
   const slot = state.editingPartyMemberSlots.find(s => s.tempId === tempId);
   if (!slot) return;
@@ -1553,6 +952,7 @@ function updateMemberSlot(tempId, charId) {
   slot.charId = charId;
   renderMemberSlots();
 }
+
 function removeMemberSlot(tempId) {
   if (state.editingPartyMemberSlots.length <= 1) {
     showToast('최소 1개의 슬롯은 유지해야 합니다.', 'info');
@@ -1561,10 +961,12 @@ function removeMemberSlot(tempId) {
   state.editingPartyMemberSlots = state.editingPartyMemberSlots.filter(s => s.tempId !== tempId);
   renderMemberSlots();
 }
+
 function addMemberSlot() {
   state.editingPartyMemberSlots.push({ tempId: uid(), charId:'' });
   renderMemberSlots();
 }
+
 async function saveParty() {
   const name = document.getElementById('partyName').value.trim();
   const raidId = document.getElementById('partyRaid').value || null;
@@ -1576,25 +978,12 @@ async function saveParty() {
   }
   document.getElementById('partyNameError').textContent = '';
 
-  const playerIds = filledSlots.map(s => {
-    const c = getCharacter(s.charId);
-    return c ? c.player_id : null;
-  }).filter(Boolean);
-  const uniquePlayerIds = new Set(playerIds);
-
-  if (uniquePlayerIds.size < playerIds.length) {
-    document.getElementById('partyMembersError').textContent = '동일 플레이어의 캐릭터가 중복됩니다.';
-    return;
-  }
-  document.getElementById('partyMembersError').textContent = '';
-
   const values = { name, raid_id: raidId, max_members: 4 };
 
   if (state.editingPartyId) {
     if (isSupabaseConnected) {
       const d = await dbUpdate('parties', { id: state.editingPartyId }, values);
       if (!d) return;
-
       const delOk = await dbDelete('party_members', { party_id: state.editingPartyId });
       if (!delOk) return;
 
@@ -1652,6 +1041,7 @@ async function saveParty() {
   closeModal('partyModal');
   renderParties();
 }
+
 async function deleteParty(id) {
   if (!confirm('파티를 삭제하시겠습니까? 관련 일정도 함께 삭제됩니다.')) return;
 
@@ -1673,67 +1063,6 @@ async function deleteParty(id) {
   showToast('파티가 삭제되었습니다.');
 }
 
-// =====================================================
-// 캐릭터 관리
-// =====================================================
-function renderCharacters() {
-  const grid = document.getElementById('playersGrid');
-  const label = document.getElementById('player-count-label');
-  label.textContent = `전체 플레이어 (${state.players.length}명)`;
-
-  if (state.players.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <p>플레이어가 없습니다. 플레이어 추가 버튼을 눌러 시작하세요.</p>
-    </div>`;
-    return;
-  }
-
-  grid.innerHTML = state.players.map(player => {
-    const chars = state.characters.filter(c => c.player_id === player.id);
-    const initial = player.name.charAt(0);
-    const colors = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#06b6d4'];
-    const color = colors[player.name.charCodeAt(0) % colors.length];
-
-    const charRows = chars.map(c => `
-      <div class="char-row">
-        <div class="char-name">${c.name}${c.role ? `<span class="char-role"> · ${c.role}</span>` : ''}</div>
-        <span class="level-badge">Lv.${c.level}</span>
-        <div class="char-actions">
-          <button class="btn-icon btn-sm" onclick="openCharModal('${player.id}','${c.id}')" title="수정">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="btn-icon btn-sm" onclick="deleteChar('${c.id}')" title="삭제" style="color:var(--red)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>
-      </div>
-    `).join('');
-
-    return `<div class="player-card">
-      <div class="player-card-header">
-        <div class="player-avatar" style="background:linear-gradient(135deg,${color},${color}cc)">${initial}</div>
-        <h4>${player.name}</h4>
-        <button class="btn-icon" onclick="openPlayerModal('${player.id}')" title="수정">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button class="btn-icon" onclick="deletePlayer('${player.id}')" title="삭제" style="color:var(--red)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>
-      </div>
-      <div class="player-char-count">보유 캐릭터 (${chars.length}개)</div>
-      ${charRows}
-      <button class="add-char-btn" onclick="openCharModal('${player.id}')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        + 캐릭터 추가
-      </button>
-    </div>`;
-  }).join('');
-}
-
-// =====================================================
-// 플레이어 CRUD
-// =====================================================
 function openPlayerModal(editId = null) {
   state.editingPlayerId = editId;
   document.getElementById('playerModalTitle').textContent = editId ? '플레이어 수정' : '플레이어 추가';
@@ -1741,13 +1070,13 @@ function openPlayerModal(editId = null) {
   document.getElementById('playerName').value = editId ? (getPlayer(editId)?.name || '') : '';
   openModal('playerModal');
 }
+
 async function savePlayer() {
   const name = document.getElementById('playerName').value.trim();
   if (!name) {
     document.getElementById('playerNameError').textContent = '플레이어명을 입력해주세요.';
     return;
   }
-  document.getElementById('playerNameError').textContent = '';
 
   if (state.editingPlayerId) {
     if (isSupabaseConnected) {
@@ -1780,9 +1109,9 @@ async function savePlayer() {
   renderCharacters();
   renderWeeklyNotes();
 }
+
 async function deletePlayer(id) {
-  const p = getPlayer(id);
-  if (!confirm(`'${p ? p.name : '플레이어'}'를 삭제하시겠습니까?\n보유한 캐릭터도 함께 삭제됩니다.`)) return;
+  if (!confirm('플레이어를 삭제하시겠습니까? 보유 캐릭터도 함께 삭제됩니다.')) return;
 
   if (isSupabaseConnected) {
     const ok = await dbDelete('players', { id });
@@ -1797,15 +1126,10 @@ async function deletePlayer(id) {
   state.characters = state.characters.filter(c => c.player_id !== id);
   state.partyMembers = state.partyMembers.filter(m => !deletedChars.includes(m.character_id));
   state.weeklyNotes = state.weeklyNotes.filter(n => n.player_id !== id);
-  renderCharacters();
-  renderParties();
-  renderSchedule();
+  renderAll();
   showToast('플레이어가 삭제되었습니다.');
 }
 
-// =====================================================
-// 캐릭터 CRUD
-// =====================================================
 function openCharModal(playerId, editId = null) {
   state.editingCharId = editId;
   state._charPlayerId = playerId;
@@ -1825,6 +1149,7 @@ function openCharModal(playerId, editId = null) {
 
   openModal('charModal');
 }
+
 async function saveChar() {
   const name = document.getElementById('charName').value.trim();
   const level = parseInt(document.getElementById('charLevel').value, 10) || 0;
@@ -1838,7 +1163,6 @@ async function saveChar() {
     document.getElementById('charNameError').textContent = '유효한 레벨을 입력해주세요.';
     return;
   }
-  document.getElementById('charNameError').textContent = '';
 
   const values = { name, level, role };
 
@@ -1874,9 +1198,9 @@ async function saveChar() {
   closeModal('charModal');
   renderCharacters();
 }
+
 async function deleteChar(id) {
-  const c = getCharacter(id);
-  if (!confirm(`'${c ? c.name : '캐릭터'}'를 삭제하시겠습니까?`)) return;
+  if (!confirm('캐릭터를 삭제하시겠습니까?')) return;
 
   if (isSupabaseConnected) {
     const ok = await dbDelete('characters', { id });
@@ -1888,25 +1212,23 @@ async function deleteChar(id) {
 
   state.characters = state.characters.filter(c => c.id !== id);
   state.partyMembers = state.partyMembers.filter(m => m.character_id !== id);
-  renderCharacters();
-  renderParties();
-  renderSchedule();
+  renderAll();
   showToast('캐릭터가 삭제되었습니다.');
 }
 
-// =====================================================
-// 메모 CRUD
-// =====================================================
 function openMemoModal() {
   const sel = document.getElementById('memoPlayer');
   sel.innerHTML = '<option value="">플레이어 선택</option>' +
     state.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
   document.getElementById('memoPlayerError').textContent = '';
   document.getElementById('memoContentError').textContent = '';
   document.getElementById('memoPlayer').value = '';
   document.getElementById('memoContent').value = '';
+
   openModal('memoModal');
 }
+
 async function saveMemo() {
   const playerId = document.getElementById('memoPlayer').value;
   const note = document.getElementById('memoContent').value.trim();
@@ -1919,9 +1241,6 @@ async function saveMemo() {
     document.getElementById('memoContentError').textContent = '메모 내용을 입력해주세요.';
     return;
   }
-
-  document.getElementById('memoPlayerError').textContent = '';
-  document.getElementById('memoContentError').textContent = '';
 
   const values = { player_id: playerId, note, week_label: '이번 주' };
 
@@ -1939,6 +1258,7 @@ async function saveMemo() {
   renderWeeklyNotes();
   showToast('메모가 추가되었습니다.');
 }
+
 async function deleteMemo(id) {
   if (isSupabaseConnected) {
     const ok = await dbDelete('weekly_player_notes', { id });
@@ -1953,15 +1273,14 @@ async function deleteMemo(id) {
   showToast('메모가 삭제되었습니다.');
 }
 
-// =====================================================
-// 초기화
-// =====================================================
-async function init() {
-  const connected = initSupabase();
+document.addEventListener('DOMContentLoaded', async () => {
+  bindModalCloseEvents();
 
+  const connected = initSupabase();
   if (!connected) {
     loadDemoData();
     renderAll();
+    switchTab('schedule');
     showToast('데모 모드로 실행 중입니다. Supabase 연결 실패', 'info');
     return;
   }
@@ -1969,10 +1288,6 @@ async function init() {
   await loadAllData();
   renderAll();
   switchTab('schedule');
-  showToast('Supabase 연결 완료', 'success');
-}
-
-init();
+  showToast('불러오기 완료', 'success');
+});
 </script>
-</body>
-</html>
