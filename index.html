@@ -86,11 +86,11 @@ a{text-decoration:none;color:inherit}
 
 .schedule-layout{
   display:grid;
-  grid-template-columns:220px minmax(0,1fr) 220px;
+  grid-template-columns:220px minmax(0,1fr);
   gap:18px;
   align-items:start;
 }
-.toolbox-card{padding:14px;position:sticky;top:78px}
+
 .toolbox-title{font-size:15px;font-weight:800;margin-bottom:12px}
 .toolbox-list{display:flex;flex-direction:column;gap:8px}
 .toolbox-link{
@@ -101,6 +101,24 @@ a{text-decoration:none;color:inherit}
 .toolbox-link:hover{background:#f8fafc;color:var(--navy)}
 .toolbox-hint{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.45}
 
+.schedule-side{
+  position:sticky;
+  top:78px;
+  height:calc(100vh - 96px);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.toolbox-card{
+  padding:14px;
+}
+
+.assigned-panel{
+  padding:14px;
+  margin-top:auto;
+}
+  
 .schedule-main{display:flex;flex-direction:column;gap:18px;min-width:0}
 .schedule-top-combined{
   display:grid;
@@ -434,12 +452,6 @@ a{text-decoration:none;color:inherit}
 }
 .detail-status.done{background:#eef2f5;color:#7d8793;border:1px solid #d8dde3}
 .detail-status.todo{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
-
-.assigned-panel{
-  padding:14px;
-  position:sticky;
-  top:78px;
-}
 .assigned-panel-head{margin-bottom:12px}
 .assigned-panel-title{font-size:15px;font-weight:800}
 .assigned-panel-sub{font-size:12px;color:var(--sub);margin-top:4px}
@@ -470,13 +482,18 @@ a{text-decoration:none;color:inherit}
 .toast.error{border-left:4px solid #ef4444}
 .toast.info{border-left:4px solid #3b82f6}
 
-@media (max-width:1480px){
-  .schedule-layout{grid-template-columns:220px minmax(0,1fr)}
-  .assigned-panel{grid-column:1 / -1;position:relative;top:auto}
-}
 @media (max-width:1280px){
   .schedule-layout{grid-template-columns:1fr}
-  .toolbox-card,.assigned-panel{position:relative;top:auto}
+  .schedule-side{
+    position:relative;
+    top:auto;
+    height:auto;
+  }
+  .assigned-panel{
+    position:relative;
+    bottom:auto;
+    margin-top:0;
+  }
   .party-modal-grid{grid-template-columns:1fr}
 }
 @media (max-width:1100px){
@@ -525,29 +542,40 @@ a{text-decoration:none;color:inherit}
 <section class="tab-content active" id="content-schedule">
   <div class="page">
     <div class="schedule-layout">
-      <aside class="card toolbox-card">
-        <div class="toolbox-title">도구함</div>
-        <div class="toolbox-list" id="toolboxList"></div>
-        <div class="toolbox-hint">링크 이름/주소를 바꾸려면 schedule_settings의 tool_links를 수정하면 됩니다.</div>
+      <aside class="schedule-side">
+        <div class="card toolbox-card">
+          <div class="toolbox-title">도구함</div>
+          <div class="toolbox-list" id="toolboxList"></div>
+          <div class="toolbox-hint">링크 이름/주소를 바꾸려면 schedule_settings의 tool_links를 수정하면 됩니다.</div>
+        </div>
+
+        <div class="card assigned-panel">
+          <div class="assigned-panel-head">
+            <div class="assigned-panel-title">스케줄 추가 필요</div>
+            <div class="assigned-panel-sub">등록 안 된 파티만 표시</div>
+          </div>
+          <div class="assigned-panel-body" id="assignedPartyPanel"></div>
+        </div>
       </aside>
 
       <div class="schedule-main">
-      <div class="card schedule-top-combined">
-        <div class="schedule-top-left">
-          <h2>주간 스케줄</h2>
-          <p>파티별 레이드 일정을 관리하세요</p>
-        </div>
-      
-        <div class="schedule-top-divider"></div>
-      
-        <div class="schedule-top-right">
-          <div class="memo-header">
-            <div class="memo-title">참고 메모 <span id="memoCount" style="font-weight:500;color:var(--muted)">(0)</span></div>
-            <button class="btn btn-orange btn-sm" onclick="openMemoModal()">+ 추가</button>
+        <div class="card schedule-top-combined">
+          <div class="schedule-top-left">
+            <h2>주간 스케줄</h2>
+            <p>파티별 레이드 일정을 관리하세요</p>
           </div>
-          <div class="memo-list" id="memoList"></div>
+
+          <div class="schedule-top-divider"></div>
+
+          <div class="schedule-top-right">
+            <div class="memo-header">
+              <div class="memo-title">참고 메모 <span id="memoCount" style="font-weight:500;color:var(--muted)">(0)</span></div>
+              <button class="btn btn-orange btn-sm" onclick="openMemoModal()">+ 추가</button>
+            </div>
+            <div class="memo-list" id="memoList"></div>
+          </div>
         </div>
-      </div>
+
         <div class="row">
           <div style="font-size:15px;font-weight:800;color:var(--sub)">스케줄표 관리</div>
           <button class="btn btn-blue" onclick="addScheduleBoard()">+ 스케줄표 추가하기</button>
@@ -555,14 +583,6 @@ a{text-decoration:none;color:inherit}
 
         <div class="schedule-board-stack" id="scheduleBoardsWrap"></div>
       </div>
-
-      <aside class="card assigned-panel">
-        <div class="assigned-panel-head">
-          <div class="assigned-panel-title">스케줄 추가 필요</div>
-          <div class="assigned-panel-sub">등록 안 된 파티만 표시</div>
-        </div>
-        <div class="assigned-panel-body" id="assignedPartyPanel"></div>
-      </aside>
     </div>
   </div>
 </section>
