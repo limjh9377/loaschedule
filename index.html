@@ -1478,8 +1478,8 @@ function renderSingleScheduleBoard(boardId) {
             <div class="event-title" style="color:${eventTextColor}">${raidName}</div>
             <div class="event-party" style="color:${eventSubTextColor}">${party.name}</div>
           </div>
-          ${absentCount > 0 ? `<div class="event-badge" style="background:${badgeBgColor};color:${badgeTextColor}">🚫 ${absentCount}</div>` : ''}
-          ${slot.is_completed ? `<div class="complete-badge">완료</div>` : ''}
+          ${absentCount > 0 ? `<div class="event-badge" style="background:${badgeBgColor};color:${badgeTextColor}">🚫${absentCount}</div>` : ''}
+          ${slot.is_completed ? `<div class="complete-badge">완</div>` : ''}
         </div>
       `;
     });
