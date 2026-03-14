@@ -102,16 +102,69 @@ a{text-decoration:none;color:inherit}
 .toolbox-hint{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.45}
 
 .schedule-main{display:flex;flex-direction:column;gap:18px;min-width:0}
-.schedule-top{
-  display:grid;grid-template-columns:1fr 430px;gap:16px
+.schedule-top-combined{
+  display:grid;
+  grid-template-columns:220px 1px minmax(0,1fr);
+  align-items:center;
+  gap:0;
+  padding:16px 20px;
 }
-.schedule-title{padding:18px 20px}
-.schedule-title h2{font-size:24px;font-weight:800}
-.schedule-title p{margin-top:6px;color:var(--sub);font-size:13px}
-.memo-box{padding:16px 18px}
-.memo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.memo-title{font-size:13px;font-weight:700;color:var(--sub)}
-.memo-list{display:flex;flex-wrap:wrap;gap:8px}
+
+.schedule-top-left{
+  padding-right:20px;
+}
+
+.schedule-top-left h2{
+  font-size:21px;
+  font-weight:800;
+  line-height:1.2;
+}
+
+.schedule-top-left p{
+  margin-top:4px;
+  color:var(--sub);
+  font-size:12px;
+}
+
+.schedule-top-right{
+  padding-left:20px;
+  min-width:0;
+}
+
+.schedule-top-divider{
+  width:1px;
+  height:68px;
+  background:repeating-linear-gradient(
+    to bottom,
+    #cbd5e1 0 6px,
+    transparent 6px 12px
+  );
+  justify-self:center;
+}
+
+.schedule-top-right{
+  padding-left:28px;
+  min-width:0;
+}
+
+.memo-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.memo-title{
+  font-size:13px;
+  font-weight:700;
+  color:var(--sub);
+}
+
+.memo-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
 .memo-chip{
   display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
   background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px
@@ -432,7 +485,29 @@ a{text-decoration:none;color:inherit}
   .party-modal-grid{grid-template-columns:1fr}
 }
 @media (max-width:1100px){
-  .schedule-top{grid-template-columns:1fr}
+  .schedule-top-combined{
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+
+  .schedule-top-left{
+    padding-right:0;
+  }
+
+  .schedule-top-right{
+    padding-left:0;
+  }
+
+  .schedule-top-divider{
+    width:100%;
+    height:1px;
+    background:repeating-linear-gradient(
+      to right,
+      #cbd5e1 0 6px,
+      transparent 6px 12px
+    );
+  }
+
   .member-slots{grid-template-columns:1fr}
 }
 </style>
@@ -462,21 +537,22 @@ a{text-decoration:none;color:inherit}
       </aside>
 
       <div class="schedule-main">
-        <div class="schedule-top">
-          <div class="card schedule-title">
-            <h2>주간 스케줄</h2>
-            <p>파티별 레이드 일정을 관리하세요</p>
-          </div>
-
-          <div class="card memo-box">
-            <div class="memo-header">
-              <div class="memo-title">참고 메모 <span id="memoCount" style="font-weight:500;color:var(--muted)">(0)</span></div>
-              <button class="btn btn-orange btn-sm" onclick="openMemoModal()">+ 추가</button>
-            </div>
-            <div class="memo-list" id="memoList"></div>
-          </div>
+      <div class="card schedule-top-combined">
+        <div class="schedule-top-left">
+          <h2>주간 스케줄</h2>
+          <p>파티별 레이드 일정을 관리하세요</p>
         </div>
-
+      
+        <div class="schedule-top-divider"></div>
+      
+        <div class="schedule-top-right">
+          <div class="memo-header">
+            <div class="memo-title">참고 메모 <span id="memoCount" style="font-weight:500;color:var(--muted)">(0)</span></div>
+            <button class="btn btn-orange btn-sm" onclick="openMemoModal()">+ 추가</button>
+          </div>
+          <div class="memo-list" id="memoList"></div>
+        </div>
+      </div>
         <div class="row">
           <div style="font-size:15px;font-weight:800;color:var(--sub)">스케줄표 관리</div>
           <button class="btn btn-blue" onclick="addScheduleBoard()">+ 스케줄표 추가하기</button>
@@ -1289,8 +1365,13 @@ function renderSingleScheduleBoard(boardId) {
   html += `<div class="time-col ${state.timeEditMode ? 'time-edit-on' : ''}">`;
   html += sorted.map(time => {
     const { ampm, label } = formatAmpmParts(time);
+    const boundaryClass =
+      normalizeTime(time) === '00:00' || normalizeTime(time) === '12:00'
+        ? 'noon'
+        : '';
+  
     return `
-      <div class="time-slot ${normalizeTime(time)==='12:00' ? 'noon' : ''}">
+      <div class="time-slot ${boundaryClass}">
         <span class="ampm-badge">${ampm}</span>
         <span class="time-label">${label}</span>
         <div class="time-edit-actions">
@@ -1308,7 +1389,13 @@ function renderSingleScheduleBoard(boardId) {
     );
 
     html += `<div class="day-col ${today === day ? 'today-col' : ''}" style="height:${totalHeight}px">`;
-    html += sorted.map(time => `<div class="grid-line ${normalizeTime(time)==='12:00' ? 'noon' : ''}"></div>`).join('');
+    html += sorted.map(time => {
+      const boundaryClass =
+        normalizeTime(time) === '00:00' || normalizeTime(time) === '12:00'
+          ? 'noon'
+          : '';
+      return `<div class="grid-line ${boundaryClass}"></div>`;
+    }).join('');
     html += `<div class="day-drop-guide">${buildHitAreas(boardId, day)}</div>`;
 
     daySlots.forEach(slot => {
