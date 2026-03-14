@@ -61,7 +61,7 @@ a{text-decoration:none;color:inherit}
 .tab-content{display:none}
 .tab-content.active{display:block}
 
-.page{max-width:1540px;margin:0 auto;padding:24px}
+.page{max-width:1720px;margin:0 auto;padding:24px}
 .page-header{margin-bottom:18px}
 .page-header h1{font-size:25px;font-weight:800}
 .page-header p{font-size:13px;color:var(--sub);margin-top:6px}
@@ -85,7 +85,10 @@ a{text-decoration:none;color:inherit}
 .btn-icon:hover{background:#f3f4f6}
 
 .schedule-layout{
-  display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr) 220px;
+  gap:18px;
+  align-items:start;
 }
 .toolbox-card{padding:14px;position:sticky;top:78px}
 .toolbox-title{font-size:15px;font-weight:800;margin-bottom:12px}
@@ -98,7 +101,7 @@ a{text-decoration:none;color:inherit}
 .toolbox-link:hover{background:#f8fafc;color:var(--navy)}
 .toolbox-hint{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.45}
 
-.schedule-main{display:flex;flex-direction:column;gap:18px}
+.schedule-main{display:flex;flex-direction:column;gap:18px;min-width:0}
 .schedule-top{
   display:grid;grid-template-columns:1fr 430px;gap:16px
 }
@@ -200,6 +203,11 @@ a{text-decoration:none;color:inherit}
   padding:3px 8px;border-radius:999px;background:#dfe4ea;color:#7d8793;
   font-size:11px;font-weight:800;border:1px solid rgba(148,163,184,.25)
 }
+.event-block.compact .event-title{font-size:14px;line-height:1.05}
+.event-block.compact .event-party{font-size:11px;line-height:1.0;font-weight:600;margin-top:2px}
+.event-block .event-title{font-size:16px;line-height:1.2}
+.event-block .event-party{font-size:12px;line-height:1.1;margin-top:4px;font-weight:600}
+.event-block.compact{padding-top:10px;padding-bottom:10px}
 
 .filter-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .filter-chip{
@@ -379,6 +387,33 @@ a{text-decoration:none;color:inherit}
 .detail-status.done{background:#eef2f5;color:#7d8793;border:1px solid #d8dde3}
 .detail-status.todo{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
 
+.assigned-panel{
+  padding:14px;
+  position:sticky;
+  top:78px;
+}
+.assigned-panel-head{margin-bottom:12px}
+.assigned-panel-title{font-size:15px;font-weight:800}
+.assigned-panel-sub{font-size:12px;color:var(--sub);margin-top:4px}
+.assigned-empty{font-size:12px;color:var(--muted)}
+.assigned-raid-group{margin-bottom:12px}
+.assigned-raid-name{
+  font-size:12px;
+  font-weight:800;
+  color:var(--sub);
+  margin-bottom:6px;
+}
+.assigned-raid-list{
+  font-size:12px;
+  color:var(--text);
+  line-height:1.5;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px 10px;
+  word-break:keep-all;
+}
+
 .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
 .toast{
   background:#fff;border-radius:12px;box-shadow:var(--shadow-lg);padding:12px 14px;font-size:13px;font-weight:700;min-width:220px
@@ -387,149 +422,15 @@ a{text-decoration:none;color:inherit}
 .toast.error{border-left:4px solid #ef4444}
 .toast.info{border-left:4px solid #3b82f6}
 
+@media (max-width:1480px){
+  .schedule-layout{grid-template-columns:220px minmax(0,1fr)}
+  .assigned-panel{grid-column:1 / -1;position:relative;top:auto}
+}
 @media (max-width:1280px){
   .schedule-layout{grid-template-columns:1fr}
-  .toolbox-card{position:relative;top:auto}
+  .toolbox-card,.assigned-panel{position:relative;top:auto}
   .party-modal-grid{grid-template-columns:1fr}
 }
-.schedule-content-layout{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 300px;
-  gap:18px;
-  align-items:start;
-}
-
-.assigned-panel{
-  padding:14px;
-  position:sticky;
-  top:78px;
-}
-
-.assigned-panel-head{
-  margin-bottom:12px;
-}
-
-.assigned-panel-title{
-  font-size:15px;
-  font-weight:800;
-}
-
-.assigned-panel-sub{
-  font-size:12px;
-  color:var(--sub);
-  margin-top:4px;
-}
-
-.assigned-group{
-  margin-bottom:16px;
-}
-
-.assigned-group-title{
-  font-size:12px;
-  font-weight:800;
-  color:var(--sub);
-  margin-bottom:8px;
-}
-
-.assigned-list{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.assigned-item{
-  border:1px solid var(--line);
-  background:#fff;
-  border-radius:12px;
-  padding:10px 12px;
-}
-
-.assigned-item-main{
-  font-size:13px;
-  font-weight:800;
-}
-
-.assigned-item-sub{
-  font-size:11px;
-  color:var(--sub);
-  margin-top:4px;
-}
-
-.assigned-empty{
-  font-size:12px;
-  color:var(--muted);
-}
-
-@media (max-width:1280px){
-  .schedule-content-layout{
-    grid-template-columns:1fr;
-  }
-  .assigned-panel{
-    position:relative;
-    top:auto;
-  }
-}
-.event-block.compact .event-title{
-  font-size:14px;
-  line-height:1.05;
-}
-
-.event-block.compact .event-party{
-  font-size:11px;
-  line-height:1.0;
-  font-weight:600;
-  margin-top:2px;
-}
-
-.event-block .event-title{
-  font-size:16px;
-  line-height:1.2;
-}
-
-.event-block .event-party{
-  font-size:12px;
-  line-height:1.1;
-  margin-top:4px;
-  font-weight:600;
-}
-.event-block.compact{
-  padding-top:10px;
-  padding-bottom:10px;
-}
-
-.event-resize-btn{
-  position:absolute;
-  left:8px;
-  right:8px;
-  height:10px;
-  border-radius:999px;
-  border:none;
-  font-size:0;
-  cursor:ns-resize;
-  display:block;
-  box-shadow:none;
-  z-index:4;
-  opacity:.92;
-}
-
-.event-resize-btn.top{
-  top:-4px;
-}
-
-.event-resize-btn.bottom{
-  bottom:-4px;
-}
-
-.event-resize-btn::after{
-  content:'';
-  display:block;
-  width:36px;
-  height:4px;
-  border-radius:999px;
-  margin:3px auto 0;
-  background:currentColor;
-}
-  
 @media (max-width:1100px){
   .schedule-top{grid-template-columns:1fr}
   .member-slots{grid-template-columns:1fr}
@@ -581,17 +482,16 @@ a{text-decoration:none;color:inherit}
           <button class="btn btn-blue" onclick="addScheduleBoard()">+ 스케줄표 추가하기</button>
         </div>
 
-        <div class="schedule-content-layout">
         <div class="schedule-board-stack" id="scheduleBoardsWrap"></div>
-        <aside class="card assigned-panel">
-          <div class="assigned-panel-head">
-            <div class="assigned-panel-title">파티 상태</div>
-            <div class="assigned-panel-sub">스케줄 등록 여부를 확인하세요</div>
-          </div>
-          <div class="assigned-panel-body" id="assignedPartyPanel"></div>
-        </aside>
       </div>
-      </div>
+
+      <aside class="card assigned-panel">
+        <div class="assigned-panel-head">
+          <div class="assigned-panel-title">스케줄 추가 필요</div>
+          <div class="assigned-panel-sub">등록 안 된 파티만 표시</div>
+        </div>
+        <div class="assigned-panel-body" id="assignedPartyPanel"></div>
+      </aside>
     </div>
   </div>
 </section>
@@ -667,7 +567,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </section>
 
-<!-- 플레이어 모달 -->
 <div class="modal-overlay" id="playerModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -688,7 +587,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 직업 모달 -->
 <div class="modal-overlay" id="jobModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -722,7 +620,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 캐릭터 모달 -->
 <div class="modal-overlay" id="charModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -766,7 +663,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 레이드 모달 -->
 <div class="modal-overlay" id="raidModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -817,7 +713,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 파티 모달 -->
 <div class="modal-overlay" id="partyModal">
   <div class="modal lg">
     <div class="modal-header">
@@ -866,7 +761,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 스케줄 모달 -->
 <div class="modal-overlay" id="scheduleModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -913,7 +807,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 상세 모달 -->
 <div class="modal-overlay" id="detailModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -928,7 +821,6 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- 메모 모달 -->
 <div class="modal-overlay" id="memoModal">
   <div class="modal sm">
     <div class="modal-header">
@@ -973,6 +865,7 @@ let currentTab = 'schedule';
 let currentSettingsTab = 'players';
 let currentRaidFilter = 'all';
 const SLOT_HEIGHT = 44;
+const RESIZE_EDGE_SIZE = 8;
 const DAY_NAMES = ['', '월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
 
 let state = {
@@ -1003,6 +896,18 @@ let state = {
   editingPartyMemberSlots: []
 };
 
+let draggedScheduleId = null;
+let resizeState = {
+  slotId: null,
+  mode: null,
+  startY: 0,
+  originStartAdj: 0,
+  originEndAdj: 0,
+  minAdj: 0,
+  maxAdj: 0,
+  ignoreClick: false
+};
+
 function uid() {
   return 'local-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 }
@@ -1015,8 +920,9 @@ function timeToMinutes(t) {
   return h * 60 + m;
 }
 function minutesToTime(mins) {
-  const h = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
+  const normalized = ((mins % 1440) + 1440) % 1440;
+  const h = Math.floor(normalized / 60);
+  const m = normalized % 60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
 function getAdjustedMinutes(t) {
@@ -1047,20 +953,11 @@ function getRoleIcon(role) {
     ? `<span class="role-icon role-support">✚</span>`
     : `<span class="role-icon role-dealer">⚔️</span>`;
 }
-  
 function hexToRgb(hex) {
   if (!hex) return { r: 16, g: 185, b: 129 };
-
   let c = String(hex).replace('#', '').trim();
-
-  if (c.length === 3) {
-    c = c.split('').map(v => v + v).join('');
-  }
-
-  if (c.length !== 6) {
-    return { r: 16, g: 185, b: 129 };
-  }
-
+  if (c.length === 3) c = c.split('').map(v => v + v).join('');
+  if (c.length !== 6) return { r: 16, g: 185, b: 129 };
   const num = parseInt(c, 16);
   return {
     r: (num >> 16) & 255,
@@ -1068,20 +965,16 @@ function hexToRgb(hex) {
     b: num & 255
   };
 }
-
 function getLuminance(hex) {
   const { r, g, b } = hexToRgb(hex);
   return (0.299 * r + 0.587 * g + 0.114 * b);
 }
-
 function isLightColor(hex) {
   return getLuminance(hex) >= 170;
 }
-
 function getContrastTextColor(hex) {
   return isLightColor(hex) ? '#111827' : '#ffffff';
 }
-
 function getContrastSubTextColor(hex) {
   return isLightColor(hex) ? 'rgba(17,24,39,.78)' : 'rgba(255,255,255,.92)';
 }
@@ -1266,51 +1159,39 @@ function renderAll() {
   renderRaids();
   renderJobs();
 }
+
 function renderAssignedPartyPanel() {
   const wrap = document.getElementById('assignedPartyPanel');
   if (!wrap) return;
 
   const assignedPartyIds = new Set(state.scheduleSlots.map(v => v.party_id));
-
-  const assigned = state.parties.filter(p => assignedPartyIds.has(p.id));
   const unassigned = state.parties.filter(p => !assignedPartyIds.has(p.id));
 
-  function renderGroup(title, parties, emptyText) {
-    if (!parties.length) {
-      return `
-        <div class="assigned-group">
-          <div class="assigned-group-title">${title}</div>
-          <div class="assigned-empty">${emptyText}</div>
-        </div>
-      `;
-    }
+  if (!unassigned.length) {
+    wrap.innerHTML = `<div class="assigned-empty">스케줄 추가 필요한 파티가 없습니다.</div>`;
+    return;
+  }
 
-    return `
-      <div class="assigned-group">
-        <div class="assigned-group-title">${title}</div>
-        <div class="assigned-list">
-          ${parties.map(p => {
-            const raid = getRaid(p.raid_id);
-            const slots = state.scheduleSlots.filter(v => v.party_id === p.id);
-            return `
-              <div class="assigned-item">
-                <div class="assigned-item-main">${p.name}</div>
-                <div class="assigned-item-sub">
-                  ${raid?.name || '레이드 없음'}
-                  ${slots.length ? ` · ${slots.length}개 일정 등록` : ''}
-                </div>
-              </div>
-            `;
-          }).join('')}
+  const raids = [...state.raids].sort((a,b)=>(a.sort_order ?? 999)-(b.sort_order ?? 999));
+  let html = '';
+
+  raids.forEach(raid => {
+    const raidParties = unassigned.filter(p => p.raid_id === raid.id);
+    if (!raidParties.length) return;
+
+    html += `
+      <div class="assigned-raid-group">
+        <div class="assigned-raid-name">${raid.name}</div>
+        <div class="assigned-raid-list">
+          ${raidParties.map(p => p.name).join(', ')}
         </div>
       </div>
     `;
-  }
+  });
 
-  wrap.innerHTML =
-    renderGroup('스케줄 지정', assigned, '등록된 파티가 없습니다.') +
-    renderGroup('스케줄 추가 필요', unassigned, '미할당 파티가 없습니다.');
+  wrap.innerHTML = html || `<div class="assigned-empty">스케줄 추가 필요한 파티가 없습니다.</div>`;
 }
+
 function renderToolbox() {
   const wrap = document.getElementById('toolboxList');
   wrap.innerHTML = state.toolLinks.map(link => {
@@ -1445,29 +1326,22 @@ function renderSingleScheduleBoard(boardId) {
       const badgeBgColor = isLightColor(color) ? 'rgba(17,24,39,.10)' : 'rgba(255,255,255,.24)';
       const badgeTextColor = isLightColor(color) ? '#111827' : '#ffffff';
 
-    html += `
-      <div class="event-block ${slot.is_completed ? 'completed' : ''} ${absentCount > 0 ? 'has-absent' : ''} ${isCompact ? 'compact' : ''}"
-        draggable="true"
-        ondragstart="onScheduleDragStart(event, '${slot.id}')"
-        onclick="openScheduleDetail('${slot.id}')"
-        style="top:${top + 4}px;height:${Math.max(height - 8, 36)}px;background:linear-gradient(180deg, ${color}, ${color}dd);color:${eventTextColor}">
-        
-        <button class="event-resize-btn top"
-          style="background:${badgeBgColor};color:${badgeTextColor}"
-          onmousedown="startResizeSchedule(event, '${slot.id}', 'start')"></button>
-    
-        <div>
-          <div class="event-title" style="color:${eventTextColor}">${raidName}</div>
-          <div class="event-party" style="color:${eventSubTextColor}">${party.name}</div>
+      html += `
+        <div class="event-block ${slot.is_completed ? 'completed' : ''} ${absentCount > 0 ? 'has-absent' : ''} ${isCompact ? 'compact' : ''}"
+          draggable="true"
+          ondragstart="onScheduleDragStart(event, '${slot.id}')"
+          onmousemove="handleScheduleResizeHover(event, this)"
+          onmouseleave="clearScheduleResizeHover(this)"
+          onmousedown="maybeStartResizeSchedule(event, '${slot.id}', this)"
+          onclick="handleScheduleBlockClick(event, '${slot.id}', this)"
+          style="top:${top + 4}px;height:${Math.max(height - 8, 36)}px;background:linear-gradient(180deg, ${color}, ${color}dd);color:${eventTextColor}">
+          <div>
+            <div class="event-title" style="color:${eventTextColor}">${raidName}</div>
+            <div class="event-party" style="color:${eventSubTextColor}">${party.name}</div>
+          </div>
+          ${absentCount > 0 ? `<div class="event-badge" style="background:${badgeBgColor};color:${badgeTextColor}">Zz ${absentCount}</div>` : ''}
+          ${slot.is_completed ? `<div class="complete-badge">완료됨</div>` : ''}
         </div>
-    
-        <button class="event-resize-btn bottom"
-          style="background:${badgeBgColor};color:${badgeTextColor}"
-          onmousedown="startResizeSchedule(event, '${slot.id}', 'end')"></button>
-    
-        ${absentCount > 0 ? `<div class="event-badge" style="background:${badgeBgColor};color:${badgeTextColor}">Zz ${absentCount}</div>` : ''}
-        ${slot.is_completed ? `<div class="complete-badge">완료됨</div>` : ''}
-      </div>
       `;
     });
 
@@ -1498,6 +1372,41 @@ async function addScheduleBoard() {
   renderScheduleBoards();
 }
 
+function getResizeEdgeFromMouse(event, el) {
+  const rect = el.getBoundingClientRect();
+  const topDist = event.clientY - rect.top;
+  const bottomDist = rect.bottom - event.clientY;
+  if (topDist >= 0 && topDist <= RESIZE_EDGE_SIZE) return 'start';
+  if (bottomDist >= 0 && bottomDist <= RESIZE_EDGE_SIZE) return 'end';
+  return null;
+}
+function handleScheduleResizeHover(event, el) {
+  const edge = getResizeEdgeFromMouse(event, el);
+  el.style.cursor = edge ? 'ns-resize' : 'grab';
+}
+function clearScheduleResizeHover(el) {
+  el.style.cursor = 'grab';
+}
+function handleScheduleBlockClick(event, slotId, el) {
+  if (resizeState.ignoreClick) {
+    resizeState.ignoreClick = false;
+    return;
+  }
+  const edge = getResizeEdgeFromMouse(event, el);
+  if (edge) return;
+  openScheduleDetail(slotId);
+}
+function maybeStartResizeSchedule(event, slotId, el) {
+  const edge = getResizeEdgeFromMouse(event, el);
+  if (!edge) return;
+  startResizeSchedule(event, slotId, edge);
+}
+function getAdjustedRangeFromSlot(slot) {
+  let startAdj = getAdjustedMinutes(slot.start_time);
+  let endAdj = getAdjustedMinutes(slot.end_time);
+  if (endAdj <= startAdj) endAdj += 1440;
+  return { startAdj, endAdj };
+}
 function startResizeSchedule(event, slotId, mode) {
   event.stopPropagation();
   event.preventDefault();
@@ -1505,11 +1414,19 @@ function startResizeSchedule(event, slotId, mode) {
   const slot = state.scheduleSlots.find(v => v.id === slotId);
   if (!slot) return;
 
+  const { startAdj, endAdj } = getAdjustedRangeFromSlot(slot);
+  const sortedAdj = getSortedTimeSlots().map(getAdjustedMinutes);
+  const minAdj = sortedAdj[0];
+  const maxAdj = sortedAdj[sortedAdj.length - 1] + 30;
+
   resizeState.slotId = slotId;
   resizeState.mode = mode;
   resizeState.startY = event.clientY;
-  resizeState.originStart = normalizeTime(slot.start_time);
-  resizeState.originEnd = normalizeTime(slot.end_time);
+  resizeState.originStartAdj = startAdj;
+  resizeState.originEndAdj = endAdj;
+  resizeState.minAdj = minAdj;
+  resizeState.maxAdj = maxAdj;
+  resizeState.ignoreClick = true;
 
   document.body.style.userSelect = 'none';
   document.body.style.cursor = 'ns-resize';
@@ -1517,46 +1434,32 @@ function startResizeSchedule(event, slotId, mode) {
   window.addEventListener('mousemove', onResizeScheduleMove);
   window.addEventListener('mouseup', endResizeSchedule);
 }
-
 function onResizeScheduleMove(event) {
   if (!resizeState.slotId || !resizeState.mode) return;
 
   const deltaY = event.clientY - resizeState.startY;
   const step = Math.round(deltaY / SLOT_HEIGHT) * 30;
 
-  const originStart = timeToMinutes(resizeState.originStart);
-  const originEnd = timeToMinutes(resizeState.originEnd);
-
-  let nextStart = originStart;
-  let nextEnd = originEnd;
+  let nextStart = resizeState.originStartAdj;
+  let nextEnd = resizeState.originEndAdj;
 
   if (resizeState.mode === 'start') {
-    nextStart = originStart + step;
-
-    // 시작시간은 종료시간보다 최소 30분 빨라야 함
-    if (nextStart >= originEnd) return;
-    if (nextStart < 0) return;
-  } else if (resizeState.mode === 'end') {
-    nextEnd = originEnd + step;
-
-    // 종료시간은 시작시간보다 최소 30분 늦어야 함
-    if (nextEnd <= originStart) return;
-    if (nextEnd > 1440) return;
+    nextStart = resizeState.originStartAdj + step;
+    if (nextStart < resizeState.minAdj) nextStart = resizeState.minAdj;
+    if (nextStart > nextEnd - 30) nextStart = nextEnd - 30;
+  } else {
+    nextEnd = resizeState.originEndAdj + step;
+    if (nextEnd > resizeState.maxAdj) nextEnd = resizeState.maxAdj;
+    if (nextEnd < nextStart + 30) nextEnd = nextStart + 30;
   }
-
-  const newStart = minutesToTime(nextStart);
-  const newEnd = minutesToTime(nextEnd);
 
   const slot = state.scheduleSlots.find(v => v.id === resizeState.slotId);
   if (!slot) return;
 
-  slot.start_time = newStart;
-  slot.end_time = newEnd;
-
+  slot.start_time = minutesToTime(nextStart);
+  slot.end_time = minutesToTime(nextEnd);
   renderScheduleBoards();
 }
-
-
 async function endResizeSchedule() {
   window.removeEventListener('mousemove', onResizeScheduleMove);
   window.removeEventListener('mouseup', endResizeSchedule);
@@ -1575,13 +1478,17 @@ async function endResizeSchedule() {
     await reloadAndRender();
   }
 
-  resizeState = {
-    slotId: null,
-    mode: null,
-    startY: 0,
-    originStart: '',
-    originEnd: ''
-  };
+  resizeState.slotId = null;
+  resizeState.mode = null;
+  resizeState.startY = 0;
+  resizeState.originStartAdj = 0;
+  resizeState.originEndAdj = 0;
+  resizeState.minAdj = 0;
+  resizeState.maxAdj = 0;
+
+  setTimeout(() => {
+    resizeState.ignoreClick = false;
+  }, 0);
 }
 
 async function deleteScheduleBoard(boardId) {
@@ -2264,7 +2171,6 @@ async function deleteParty(id) {
   await dbDelete('parties', { id });
   await reloadAndRender();
 }
-  
 function duplicateParty(partyId) {
   const party = getParty(partyId);
   if (!party) return;
@@ -2293,7 +2199,6 @@ function duplicateParty(partyId) {
   openModal('partyModal');
 }
 
-  
 function openScheduleModal(slotId = null, presetBoardId = null, presetDay = null, presetStart = null) {
   state.editingScheduleId = slotId;
   renderBoardOptions(presetBoardId || state.scheduleBoards[0]?.id || '');
@@ -2472,16 +2377,11 @@ async function removeTimeSlot(time) {
   renderScheduleBoards();
 }
 
-let draggedScheduleId = null;
-let resizeState = {
-  slotId: null,
-  mode: null, // 'start' | 'end'
-  startY: 0,
-  originStart: '',
-  originEnd: ''
-};
-  
 function onScheduleDragStart(e, slotId) {
+  if (resizeState.slotId) {
+    e.preventDefault();
+    return;
+  }
   draggedScheduleId = slotId;
   e.dataTransfer.setData('text/plain', slotId);
   e.dataTransfer.effectAllowed = 'move';
