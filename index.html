@@ -779,13 +779,13 @@ a{text-decoration:none;color:inherit}
       <div class="form-group">
         <label>요일 *</label>
         <select class="form-control" id="schedDay">
-          <option value="1">월요일</option>
-          <option value="2">화요일</option>
           <option value="3">수요일</option>
           <option value="4">목요일</option>
           <option value="5">금요일</option>
           <option value="6">토요일</option>
           <option value="7">일요일</option>
+          <option value="1">월요일</option>
+          <option value="2">화요일</option>
         </select>
       </div>
       <div class="form-row">
@@ -867,6 +867,7 @@ let currentRaidFilter = 'all';
 const SLOT_HEIGHT = 44;
 const RESIZE_EDGE_SIZE = 8;
 const DAY_NAMES = ['', '월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
+const DAY_ORDER = [3,4,5,6,7,1,2];
 
 let state = {
   players: [],
@@ -1276,12 +1277,14 @@ function renderSingleScheduleBoard(boardId) {
   const sorted = getSortedTimeSlots();
   const totalHeight = sorted.length * SLOT_HEIGHT;
   const today = getCurrentKstDay();
+  const dayOrder = [3, 4, 5, 6, 7, 1, 2]; // 수목금토일월화
 
   let html = '';
   html += `<div class="board-head time-head">시간</div>`;
-  for (let day = 1; day <= 7; day++) {
+
+  dayOrder.forEach(day => {
     html += `<div class="board-head ${today === day ? 'today-head' : ''}">${DAY_NAMES[day]}</div>`;
-  }
+  });
 
   html += `<div class="time-col ${state.timeEditMode ? 'time-edit-on' : ''}">`;
   html += sorted.map(time => {
@@ -1299,8 +1302,11 @@ function renderSingleScheduleBoard(boardId) {
   }).join('');
   html += `</div>`;
 
-  for (let day = 1; day <= 7; day++) {
-    const daySlots = state.scheduleSlots.filter(s => (s.board_id || 'board-1') === boardId && s.day_of_week === day);
+  dayOrder.forEach(day => {
+    const daySlots = state.scheduleSlots.filter(
+      s => (s.board_id || 'board-1') === boardId && s.day_of_week === day
+    );
+
     html += `<div class="day-col ${today === day ? 'today-col' : ''}" style="height:${totalHeight}px">`;
     html += sorted.map(time => `<div class="grid-line ${normalizeTime(time)==='12:00' ? 'noon' : ''}"></div>`).join('');
     html += `<div class="day-drop-guide">${buildHitAreas(boardId, day)}</div>`;
@@ -1346,7 +1352,7 @@ function renderSingleScheduleBoard(boardId) {
     });
 
     html += `</div>`;
-  }
+  });
 
   return html;
 }
@@ -2215,7 +2221,7 @@ function openScheduleModal(slotId = null, presetBoardId = null, presetDay = null
     document.getElementById('schedEnd').value = normalizeTime(slot.end_time);
   } else {
     document.getElementById('scheduleModalTitle').textContent = '스케줄 추가';
-    document.getElementById('schedDay').value = presetDay || '1';
+    document.getElementById('schedDay').value = presetDay || '3';
     document.getElementById('schedStart').value = presetStart || '21:00';
     document.getElementById('schedEnd').value = presetStart ? minutesToTime((timeToMinutes(presetStart) + 30) % 1440) : '21:30';
   }
