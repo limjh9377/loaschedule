@@ -203,9 +203,10 @@ a{text-decoration:none;color:inherit}
   background:#fff;border:1px solid var(--line);border-radius:18px;overflow:auto;box-shadow:var(--shadow)
 }
 .schedule-board{
-  min-width:1080px;
+  width:max-content;
+  margin:0 auto;
   display:grid;
-  grid-template-columns:120px repeat(7, minmax(130px,1fr));
+  grid-template-columns:110px repeat(7, 150px);
 }
 .board-head{
   position:sticky;top:0;z-index:30;background:var(--surface-2);border-bottom:1px solid var(--line);
