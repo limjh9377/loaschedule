@@ -617,42 +617,6 @@ a{text-decoration:none;color:inherit}
   overflow:hidden;
 }
 
-.event-capture-btn{
-  position:absolute;
-  top:6px;
-  left:8px;
-  width:24px;
-  height:24px;
-  border:none;
-  border-radius:999px;
-  background:rgba(255,255,255,.22);
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  cursor:pointer;
-  z-index:3;
-  backdrop-filter:blur(2px);
-  pointer-events:auto;
-}
-
-.event-capture-btn:hover{
-  background:rgba(255,255,255,.34);
-}
-
-.event-block.completed .event-capture-btn{
-  background:#d1d5db;
-  color:#6b7280;
-}
-
-.event-block.compact .event-capture-btn{
-  width:22px;
-  height:22px;
-  top:5px;
-  left:6px;
-  font-size:11px;
-}
 
 .capture-temp-wrap{
   position:fixed;
@@ -1488,7 +1452,7 @@ function renderScheduleBoards() {
   wrap.innerHTML = state.scheduleBoards.map(board => {
     const slotCount = state.scheduleSlots.filter(v => (v.board_id || 'board-1') === board.id).length;
     return `
-      <div class="card schedule-block">
+      <div class="card schedule-block" data-board-id="${board.id}">
       <div class="schedule-block-head">
         <div>
           <div class="schedule-block-title">${board.title}</div>
@@ -1510,6 +1474,7 @@ function renderScheduleBoards() {
             <button class="time-edit-btn ${state.timeEditMode ? 'active' : ''}" onclick="toggleTimeEdit()">
               ${state.timeEditMode ? '시간 수정 종료' : '시간 수정'}
             </button>
+            <button class="btn btn-ghost btn-sm" onclick="exportBoardImage('${board.id}')">이미지 저장</button>
             <button class="btn btn-primary btn-sm" onclick="openScheduleModal(null, '${board.id}')">+ 스케줄 추가</button>
             ${state.scheduleBoards.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="deleteScheduleBoard('${board.id}')">스케줄표 삭제</button>` : ''}
           </div>
@@ -1609,12 +1574,6 @@ function renderSingleScheduleBoard(boardId) {
           onclick="handleScheduleBlockClick(event, '${slot.id}', this)"
           style="top:${top + 4}px;height:${Math.max(height - 8, 36)}px;background:linear-gradient(180deg, ${color}, ${color}dd);color:${eventTextColor}">
           
-          <button class="event-capture-btn"
-            onmousedown="event.stopPropagation()"
-            onclick="event.stopPropagation(); exportScheduleImage('${slot.id}')"
-            ondragstart="event.preventDefault(); event.stopPropagation()"
-            title="이미지 저장">📷</button>
-      
           <div>
             <div class="event-title" style="color:${eventTextColor}">${raidName}</div>
             <div class="event-party" style="color:${eventSubTextColor}">${party.name}</div>
@@ -2761,38 +2720,49 @@ function sanitizeFileName(name) {
     .replace(/\s+/g, '_');
 }
 
-async function exportScheduleImage(slotId) {
-  const slot = state.scheduleSlots.find(v => v.id === slotId);
-  if (!slot) return showToast('일정을 찾을 수 없습니다.', 'error');
+async function exportBoardImage(boardId) {
+  const board = getBoard(boardId);
+  if (!board) return showToast('스케줄표를 찾을 수 없습니다.', 'error');
 
-  const eventEl = document.querySelector(`.event-block[data-slot-id="${slotId}"]`);
-  if (!eventEl) return showToast('캡처할 일정 블록을 찾을 수 없습니다.', 'error');
-
-  const party = getParty(slot.party_id);
-  const raid = party ? getRaid(party.raid_id) : null;
+  const boardEl = document.querySelector(`.schedule-block[data-board-id="${boardId}"]`);
+  if (!boardEl) return showToast('캡처할 스케줄표를 찾을 수 없습니다.', 'error');
 
   try {
-    const clone = eventEl.cloneNode(true);
+    const clone = boardEl.cloneNode(true);
 
-    clone.style.position = 'relative';
-    clone.style.left = '0';
-    clone.style.right = '0';
-    clone.style.top = '0';
-    clone.style.height = `${eventEl.offsetHeight}px`;
-    clone.style.width = `${eventEl.offsetWidth}px`;
-    clone.style.margin = '0';
-    clone.style.cursor = 'default';
+    clone.style.width = `${boardEl.scrollWidth}px`;
+    clone.style.maxWidth = 'none';
     clone.style.boxSizing = 'border-box';
-    clone.style.overflow = 'hidden';
-    clone.querySelectorAll('.event-capture-btn').forEach(btn => btn.remove());
+    clone.style.overflow = 'visible';
+
+    const originalShell = boardEl.querySelector('.schedule-shell');
+    const cloneShell = clone.querySelector('.schedule-shell');
+    const cloneBoard = clone.querySelector('.schedule-board');
+
+    if (cloneShell && originalShell) {
+      cloneShell.style.overflow = 'visible';
+      cloneShell.style.maxWidth = 'none';
+      cloneShell.style.width = `${originalShell.scrollWidth}px`;
+    }
+
+    if (cloneBoard) {
+      cloneBoard.style.width = 'max-content';
+    }
 
     const tempWrap = document.createElement('div');
     tempWrap.className = 'capture-temp-wrap';
+    tempWrap.style.left = '0';
+    tempWrap.style.top = '0';
+    tempWrap.style.zIndex = '-1';
+    tempWrap.style.pointerEvents = 'none';
+    tempWrap.style.background = '#f3f5f9';
+    tempWrap.style.padding = '24px';
+
     tempWrap.appendChild(clone);
     document.body.appendChild(tempWrap);
 
     const canvas = await html2canvas(clone, {
-      backgroundColor: null,
+      backgroundColor: '#f3f5f9',
       scale: 2,
       useCORS: true
     });
@@ -2805,10 +2775,7 @@ async function exportScheduleImage(slotId) {
         return;
       }
 
-      const fileName = sanitizeFileName(
-        `${raid?.name || '레이드'}_${party?.name || '파티'}_${DAY_NAMES[slot.day_of_week]}_${normalizeTime(slot.start_time)}`
-      ) + '.png';
-
+      const fileName = sanitizeFileName(board.title || '스케줄표') + '.png';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -2818,13 +2785,14 @@ async function exportScheduleImage(slotId) {
       a.remove();
       URL.revokeObjectURL(url);
 
-      showToast('일정 이미지가 저장되었습니다.');
+      showToast('스케줄표 이미지가 저장되었습니다.');
     }, 'image/png');
   } catch (e) {
     console.error(e);
-    showToast('이미지 저장 중 오류가 발생했습니다.', 'error');
+    showToast('스케줄표 저장 중 오류가 발생했습니다.', 'error');
   }
 }
+
 async function bootstrap() {
   bindModalCloseEvents();
   initSupabase();
@@ -2839,6 +2807,7 @@ async function bootstrap() {
 }
 
 bootstrap();
+  
 </script>
 </body>
 </html>
