@@ -2743,11 +2743,20 @@ async function exportBoardImage(boardId) {
       cloneShell.style.overflow = 'visible';
       cloneShell.style.maxWidth = 'none';
       cloneShell.style.width = `${originalShell.scrollWidth}px`;
+      cloneShell.scrollLeft = 0;
+      cloneShell.scrollTop = 0;
     }
 
     if (cloneBoard) {
       cloneBoard.style.width = 'max-content';
     }
+
+    clone.querySelectorAll('.board-head, .board-head.time-head, .time-col').forEach(el => {
+      el.style.position = 'static';
+      el.style.top = 'auto';
+      el.style.left = 'auto';
+      el.style.zIndex = 'auto';
+    });
 
     const tempWrap = document.createElement('div');
     tempWrap.className = 'capture-temp-wrap';
