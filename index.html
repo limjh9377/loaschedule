@@ -1332,15 +1332,24 @@ async function loadAllData() {
   state.attendance = attendance || [];
   state.weeklyNotes = notes || [];
 
-  const setting = settings?.[0];
-  state.timeSlots = setting?.time_slots || [
-    "10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
-    "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00",
-    "19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00","23:30",
-    "00:00","00:30","01:00","01:30","02:00"
-  ];
-  state.scheduleBoards = setting?.board_configs || [{ id:'board-1', title:'이번 주 스케줄' }];
-  state.toolLinks = setting?.tool_links || DEFAULT_TOOL_LINKS;
+const setting = settings?.[0];
+
+state.timeSlots = setting?.time_slots || [
+  "10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
+  "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00",
+  "19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00","23:30",
+  "00:00","00:30","01:00","01:30","02:00"
+];
+
+state.scheduleBoards = setting?.board_configs || [{ id:'board-1', title:'이번 주 스케줄' }];
+
+const loadedToolLinks = Array.isArray(setting?.tool_links) ? setting.tool_links : [];
+
+state.toolLinks =
+  loadedToolLinks.length > 0 &&
+  loadedToolLinks.some(link => String(link?.url || '').trim())
+    ? loadedToolLinks
+    : DEFAULT_TOOL_LINKS;
 }
 
 async function persistSettings() {
@@ -1398,18 +1407,20 @@ function renderAssignedPartyPanel() {
 
 function renderToolbox() {
   const wrap = document.getElementById('toolboxList');
+  if (!wrap) return;
+
   wrap.innerHTML = state.toolLinks.map(link => {
-    const href = link.url && String(link.url).trim() ? link.url : '#';
-    const blank = href !== '#' ? `target="_blank" rel="noopener noreferrer"` : '';
+    const href = String(link?.url || '').trim();
+    const safeHref = href || '#';
+
     return `
-      <a class="toolbox-link" href="${href}" ${blank}
-         onclick="${href === '#' ? `event.preventDefault();showToast('링크 주소를 먼저 입력해주세요.','info')` : ''}">
-        ${link.label}
+      <a class="toolbox-link" href="${safeHref}" ${href ? `target="_blank" rel="noopener noreferrer"` : ''}
+         onclick="${!href ? `event.preventDefault();showToast('링크 주소를 먼저 입력해주세요.','info')` : ''}">
+        ${link?.label || '바로가기'}
       </a>
     `;
   }).join('');
 }
-
 function renderMemos() {
   const list = document.getElementById('memoList');
   const count = document.getElementById('memoCount');
