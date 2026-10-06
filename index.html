@@ -3663,14 +3663,16 @@ function getCharacterRaidScheduleSlots(characterId, raidId) {
     return party && party.raid_id === raidId;
   });
 }
+// 캐릭터 골드체크는 실제 스케줄 등록 여부를 우선합니다.
+// 레이드 min/max 레벨 범위가 캐릭터 레벨과 달라도 스케줄에 등록되어 있으면
+// 정상 표시하고 남은 획득 골드 계산에도 포함합니다.
 function getCharacterRemainingGoldSplit(characterId) {
   let slotsLeft = Math.max(0, 3 - getGoldCount(characterId));
   const total = { trade:0, bound:0 };
   if (slotsLeft <= 0) return total;
 
-  for (const { raid, levelOk } of getActiveGoldRaidsForCharacter({ id: characterId, level: getCharacter(characterId)?.level || 0 })) {
+  for (const { raid } of getActiveGoldRaidsForCharacter({ id: characterId, level: getCharacter(characterId)?.level || 0 })) {
     if (slotsLeft <= 0) break;
-    if (!levelOk) continue;
     const reward = getCharacterReward(characterId, raid.id);
     if (reward) continue;
     const hasUpcoming = getCharacterRaidScheduleSlots(characterId, raid.id).some(slot => !slot.is_completed);
@@ -3823,7 +3825,7 @@ function renderGoldCharacterCards() {
         </div>
 
         ${raids.length ? `<div class="gold-raid-list">
-          ${raids.map(({raid, levelOk, reward}) => {
+          ${raids.map(({raid, reward}) => {
             const isGold = reward?.reward_type === 'gold';
             const isMaterial = reward?.reward_type === 'material';
             const upcomingSchedules = getCharacterRaidScheduleSlots(ch.id, raid.id).filter(slot => !slot.is_completed);
@@ -3832,7 +3834,7 @@ function renderGoldCharacterCards() {
               : '';
             const rowClass = isGold ? 'done' : (isMaterial ? 'material' : '');
             return `
-              <div class="gold-raid-row ${rowClass} ${levelOk ? '' : 'out'}">
+              <div class="gold-raid-row ${rowClass}">
                 <div class="gold-raid-main">
                   <div class="gold-raid-title">${raid.icon ? escapeGoldHtml(raid.icon) : '🛡'} ${escapeGoldHtml(raid.name)}</div>
                   ${scheduleLine}
