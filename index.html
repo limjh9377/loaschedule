@@ -3677,8 +3677,16 @@ function getCharacterRemainingGoldSplit(characterId) {
     if (reward) continue;
     const hasUpcoming = getCharacterRaidScheduleSlots(characterId, raid.id).some(slot => !slot.is_completed);
     if (!hasUpcoming) continue;
-    total.trade += getRaidTradeGold(raid);
-    total.bound += getRaidBoundGold(raid);
+
+    const tradeGold = getRaidTradeGold(raid);
+    const boundGold = getRaidBoundGold(raid);
+
+    // 미완료 0골드 레이드는 아직 골드 획득 여부를 선택하지 않은 상태이므로
+    // '남은 획득 골드'의 3회 슬롯을 미리 차감하지 않습니다.
+    if (tradeGold <= 0 && boundGold <= 0) continue;
+
+    total.trade += tradeGold;
+    total.bound += boundGold;
     slotsLeft -= 1;
   }
   return total;
