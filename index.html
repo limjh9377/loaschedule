@@ -1985,7 +1985,9 @@ async function loadAllData() {
   state.weeklyRaidRewards = weeklyRaidRewards || [];
   state.weeklyCharacterChecks = weeklyCharacterChecks || [];
   state.goldRateSetting = goldRateSettings?.[0] || { setting_key:'default', base_gold_manha:100, price_per_base_manwon:15, fee_rate:0.05 };
-  if (!state.currentGoldWeekLabel) state.currentGoldWeekLabel = getDefaultWeekLabel();
+  // 골드 체크 화면은 현재 레이드 주차를 기준으로 사용합니다.
+  // 페이지를 오래 켜둔 채 수요일 주차가 넘어가도 이전 week_label에 머물지 않도록 매 로드 시 갱신합니다.
+  state.currentGoldWeekLabel = getDefaultWeekLabel();
 
 const setting = settings?.[0];
 
@@ -3574,6 +3576,15 @@ function getWeekRewards() {
   const week = getGoldWeekLabel();
   return (state.weeklyRaidRewards || []).filter(v => v.week_label === week && v.is_completed !== false);
 }
+function getRewardsForWeek(weekLabel) {
+  return (state.weeklyRaidRewards || []).filter(v => v.week_label === weekLabel && v.is_completed !== false);
+}
+function getCharacterRewardForWeek(characterId, raidId, weekLabel) {
+  return getRewardsForWeek(weekLabel).find(v => v.character_id === characterId && v.raid_id === raidId) || null;
+}
+function getGoldCountForWeek(characterId, weekLabel, excludeRaidId = '') {
+  return getRewardsForWeek(weekLabel).filter(v => v.character_id === characterId && v.reward_type === 'gold' && v.raid_id !== excludeRaidId).length;
+}
 
 function getWeekCharacterChecks() {
   const week = getGoldWeekLabel();
@@ -3675,13 +3686,16 @@ function getCharacterRemainingGoldSplit(characterId) {
     if (slotsLeft <= 0) break;
     const reward = getCharacterReward(characterId, raid.id);
     if (reward) continue;
-    const hasUpcoming = getCharacterRaidScheduleSlots(characterId, raid.id).some(slot => !slot.is_completed);
-    if (!hasUpcoming) continue;
+
+    // 남은 골드는 스케줄 카드의 is_completed가 아니라 실제 골드/재료 체크 기록을 기준으로 계산합니다.
+    // 스케줄 완료 저장과 골드 체크 저장 사이에 문제가 생겨도 '획득 0인데 남은 골드만 감소'하지 않게 합니다.
+    const hasSchedule = getCharacterRaidScheduleSlots(characterId, raid.id).length > 0;
+    if (!hasSchedule) continue;
 
     const tradeGold = getRaidTradeGold(raid);
     const boundGold = getRaidBoundGold(raid);
 
-    // 미완료 0골드 레이드는 아직 골드 획득 여부를 선택하지 않은 상태이므로
+    // 0골드 레이드는 골드 획득 여부를 선택하기 전에는
     // '남은 획득 골드'의 3회 슬롯을 미리 차감하지 않습니다.
     if (tradeGold <= 0 && boundGold <= 0) continue;
 
@@ -3791,7 +3805,7 @@ function renderGoldSummaryCards() {
     <div class="gold-summary-card">
       <div class="gold-summary-label">남은 획득 골드</div>
       <div class="gold-summary-split"><span>거래가능 <b>${remainingGold.trade.toLocaleString()}</b></span><i class="divider"></i><span>귀속 <b>${remainingGold.bound.toLocaleString()}</b></span></div>
-      <div class="gold-summary-sub">미완료 스케줄 중 받을 수 있는 골드</div>
+      <div class="gold-summary-sub">아직 골드/재료 체크하지 않은 스케줄 기준</div>
     </div>
   `;
 }
@@ -3836,9 +3850,9 @@ function renderGoldCharacterCards() {
           ${raids.map(({raid, reward}) => {
             const isGold = reward?.reward_type === 'gold';
             const isMaterial = reward?.reward_type === 'material';
-            const upcomingSchedules = getCharacterRaidScheduleSlots(ch.id, raid.id).filter(slot => !slot.is_completed);
-            const scheduleLine = upcomingSchedules.length
-              ? `<span class="gold-raid-schedule">⏰ ${upcomingSchedules.map(slot => formatGoldScheduleTime(slot)).join(' · ')}</span>`
+            const raidSchedules = getCharacterRaidScheduleSlots(ch.id, raid.id);
+            const scheduleLine = !reward && raidSchedules.length
+              ? `<span class="gold-raid-schedule">⏰ ${raidSchedules.map(slot => formatGoldScheduleTime(slot)).join(' · ')}</span>`
               : '';
             const rowClass = isGold ? 'done' : (isMaterial ? 'material' : '');
             return `
@@ -4077,24 +4091,33 @@ function resolveZeroGoldRewardChoice(choice) {
 
 async function applyScheduleRewardsFromSlot(slotId, forcedRewardType = null) {
   const slot = state.scheduleSlots.find(v => v.id === slotId);
-  if (!slot) return;
+  if (!slot) return { ok:false, attempted:0, failed:0 };
   const party = getParty(slot.party_id);
-  if (!party || isEmptyTimeParty(party)) return;
+  if (!party || isEmptyTimeParty(party)) return { ok:true, attempted:0, failed:0 };
   const raid = getRaid(party.raid_id);
-  if (!raid || isEmptyTimeRaid(raid)) return;
+  if (!raid || isEmptyTimeRaid(raid)) return { ok:true, attempted:0, failed:0 };
 
+  // 스케줄 완료는 언제나 '현재 레이드 주차'에 기록합니다.
+  // 골드체크의 과거/선택 주차 상태에 영향을 받지 않습니다.
+  const activeWeek = getDefaultWeekLabel();
   const members = getPartyMembers(party.id);
+  let attempted = 0;
+  let failed = 0;
+
   for (const m of members) {
     if (!m.character_id) continue;
     const att = state.attendance.find(v => v.schedule_slot_id === slotId && v.player_id === m.player_id);
     if (att?.is_absent) continue;
-    const existing = getCharacterReward(m.character_id, raid.id);
-    let rewardType = existing?.reward_type || forcedRewardType || (getGoldCount(m.character_id, raid.id) < 3 ? 'gold' : 'material');
-    if (!existing && rewardType === 'gold' && getGoldCount(m.character_id, raid.id) >= 3) {
+
+    attempted += 1;
+    const existing = getCharacterRewardForWeek(m.character_id, raid.id, activeWeek);
+    let rewardType = existing?.reward_type || forcedRewardType || (getGoldCountForWeek(m.character_id, activeWeek, raid.id) < 3 ? 'gold' : 'material');
+    if (!existing && rewardType === 'gold' && getGoldCountForWeek(m.character_id, activeWeek, raid.id) >= 3) {
       rewardType = 'material';
     }
-    await upsertWeeklyRaidReward({
-      week_label:getGoldWeekLabel(),
+
+    const inserted = await upsertWeeklyRaidReward({
+      week_label:activeWeek,
       character_id:m.character_id,
       raid_id:raid.id,
       schedule_slot_id:slotId,
@@ -4102,10 +4125,17 @@ async function applyScheduleRewardsFromSlot(slotId, forcedRewardType = null) {
       is_completed:true,
       completed_at:new Date().toISOString()
     });
+
+    if (!inserted?.length) failed += 1;
   }
+
+  return { ok:failed === 0, attempted, failed };
 }
 async function clearScheduleRewards(slotId) {
-  const targets = getWeekRewards().filter(v => v.schedule_slot_id === slotId);
+  const activeWeek = getDefaultWeekLabel();
+  const targets = (state.weeklyRaidRewards || []).filter(
+    v => v.week_label === activeWeek && v.is_completed !== false && v.schedule_slot_id === slotId
+  );
   for (const r of targets) await dbDelete('weekly_raid_rewards', { id: r.id });
 }
 async function resetWeeklyRewards() {
@@ -4178,8 +4208,24 @@ async function toggleScheduleComplete(slotId, isCompleted) {
       return;
     }
 
-    if (isCompleted) await applyScheduleRewardsFromSlot(slotId, forcedRewardType);
-    else await clearScheduleRewards(slotId);
+    if (isCompleted) {
+      const rewardResult = await applyScheduleRewardsFromSlot(slotId, forcedRewardType);
+      if (!rewardResult.ok) {
+        // 일부 보상 체크 저장이 실패한 상태로 일정만 완료되면 합계가 어긋나므로 전부 롤백합니다.
+        await clearScheduleRewards(slotId);
+        const latestSlot = state.scheduleSlots.find(v => v.id === slotId);
+        await dbUpdateScheduleIfUnchanged(
+          slotId,
+          latestSlot?.updated_at || null,
+          { is_completed:false },
+          '보상 체크 저장 중 일정 상태가 변경되었습니다.'
+        );
+        showToast('골드체크 저장에 실패해 일정 완료를 취소했습니다. 다시 시도해주세요.', 'error');
+        return;
+      }
+    } else {
+      await clearScheduleRewards(slotId);
+    }
   } finally {
     releaseRealtimeSuppression();
   }
