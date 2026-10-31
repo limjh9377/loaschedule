@@ -1459,37 +1459,14 @@ let realtimeReloadPending = false;
 let realtimeStatus = 'CLOSED';
 let suppressRealtimeUntil = 0;
 
-// 방금 저장한 골드 체크가 Realtime 직후의 일시적인 재조회 실패/지연으로
-// 0.1초 만에 사라지는 현상을 막기 위한 짧은 보호 캐시입니다.
-// 실제 DELETE Realtime이 오면 즉시 제거합니다.
-const recentWeeklyRewardWrites = new Map();
-function weeklyRewardKey(rowOrWeek, characterId = '', raidId = '') {
-  if (typeof rowOrWeek === 'object' && rowOrWeek) {
-    return `${rowOrWeek.week_label || ''}|${rowOrWeek.character_id || ''}|${rowOrWeek.raid_id || ''}`;
-  }
-  return `${rowOrWeek || ''}|${characterId || ''}|${raidId || ''}`;
-}
-function rememberWeeklyRewardWrite(row) {
-  if (!row?.week_label || !row?.character_id || !row?.raid_id) return;
-  recentWeeklyRewardWrites.set(weeklyRewardKey(row), { row:{ ...row }, expiresAt:Date.now() + 5000 });
-}
-function forgetWeeklyRewardWrite(row) {
-  if (!row) return;
-  recentWeeklyRewardWrites.delete(weeklyRewardKey(row));
-}
-function mergeRecentWeeklyRewardWrites(rows) {
-  const now = Date.now();
-  const merged = Array.isArray(rows) ? [...rows] : [];
-  for (const [key, entry] of [...recentWeeklyRewardWrites.entries()]) {
-    if (!entry || entry.expiresAt <= now) {
-      recentWeeklyRewardWrites.delete(key);
-      continue;
-    }
-    const idx = merged.findIndex(v => weeklyRewardKey(v) === key);
-    if (idx >= 0) merged[idx] = { ...entry.row, ...merged[idx] };
-    else merged.push({ ...entry.row });
-  }
-  return merged;
+// 서버 전체 재조회와 사용자 저장이 동시에 진행될 때 오래된 조회 결과가
+// 최신 로컬/Realtime 상태를 덮어쓰지 않도록 데이터 변경 세대를 관리합니다.
+let dataMutationRevision = 0;
+let fullSyncRunning = false;
+let fullSyncQueued = false;
+function bumpDataRevision() {
+  dataMutationRevision += 1;
+  return dataMutationRevision;
 }
 
 // 스케줄 카드 드래그/리사이즈 저장이 겹치지 않도록 별도 잠금 관리
@@ -1890,6 +1867,7 @@ async function dbInsert(table, values) {
   try {
     const { data, error } = await supabaseClient.from(table).insert(values).select();
     if (error) throw error;
+    bumpDataRevision();
     return data;
   } catch (e) {
     console.error('insert error', table, e);
@@ -1904,6 +1882,7 @@ async function dbUpdate(table, match, values) {
     Object.entries(match).forEach(([k,v]) => q = q.eq(k,v));
     const { data, error } = await q.select();
     if (error) throw error;
+    bumpDataRevision();
     return data;
   } catch (e) {
     console.error('update error', table, e);
@@ -1926,6 +1905,7 @@ async function dbUpdateScheduleIfUnchanged(slotId, expectedUpdatedAt, values, co
       return null;
     }
 
+    bumpDataRevision();
     const updated = data[0];
     const idx = state.scheduleSlots.findIndex(v => v.id === slotId);
     if (idx >= 0) {
@@ -1958,6 +1938,7 @@ async function dbDeleteScheduleIfUnchanged(slotId, expectedUpdatedAt) {
       await reloadAndRender();
       return null;
     }
+    bumpDataRevision();
     return data;
   } catch (e) {
     console.error('schedule optimistic delete error', e);
@@ -1974,6 +1955,7 @@ async function dbDelete(table, match) {
     Object.entries(match).forEach(([k,v]) => q = q.eq(k,v));
     const { error } = await q;
     if (error) throw error;
+    bumpDataRevision();
     return true;
   } catch (e) {
     console.error('delete error', table, e);
@@ -1983,6 +1965,9 @@ async function dbDelete(table, match) {
 }
 
 async function loadAllData() {
+  const loadRevision = dataMutationRevision;
+  const activeWeek = getDefaultWeekLabel();
+
   const [
     players, jobs, characters, raids, parties, partyMembers,
     scheduleSlots, attendance, notes, settings, weeklyRaidRewards, goldRateSettings, weeklyCharacterChecks
@@ -1997,13 +1982,18 @@ async function loadAllData() {
     dbFetch('attendance'),
     dbFetch('weekly_player_notes', { order: { col:'created_at', asc:true } }),
     dbFetch('schedule_settings', { eq: { setting_key: 'default' } }),
-    dbFetch('weekly_raid_rewards', { order: { col:'created_at', asc:true } }),
+    // 골드 체크는 현재 주차 데이터만 읽습니다. 전체 누적 행을 조회하면 Supabase 행 제한에 걸려
+    // 최신 주차가 누락될 수 있으므로 반드시 week_label로 제한합니다.
+    dbFetch('weekly_raid_rewards', { eq: { week_label: activeWeek }, order: { col:'created_at', asc:true } }),
     dbFetch('gold_rate_settings', { eq: { setting_key: 'default' } }),
-    dbFetch('weekly_character_checks', { order: { col:'created_at', asc:true } })
+    dbFetch('weekly_character_checks', { eq: { week_label: activeWeek }, order: { col:'created_at', asc:true } })
   ]);
 
-  // 개별 SELECT가 일시적으로 실패(null)해도 이미 화면에 있던 정상 상태를 []로 지우지 않습니다.
-  // Realtime 사용 중 네트워크 타이밍 때문에 체크가 잠깐 생겼다가 사라지는 현상을 방지합니다.
+  // 조회가 진행되는 사이 저장/Realtime 변경이 있었다면 이 결과는 이미 오래된 스냅샷입니다.
+  // 적용하지 않고 호출자에게 재동기화를 요청합니다.
+  if (loadRevision !== dataMutationRevision) return false;
+
+  // 개별 SELECT가 실패(null)한 경우 기존 정상 상태를 지우지 않습니다.
   if (players !== null) state.players = players || [];
   if (jobs !== null) state.jobs = jobs || [];
   if (characters !== null) state.characters = characters || [];
@@ -2019,32 +2009,35 @@ async function loadAllData() {
   }
   if (attendance !== null) state.attendance = attendance || [];
   if (notes !== null) state.weeklyNotes = notes || [];
-  if (weeklyRaidRewards !== null) state.weeklyRaidRewards = mergeRecentWeeklyRewardWrites(weeklyRaidRewards || []);
-  else state.weeklyRaidRewards = mergeRecentWeeklyRewardWrites(state.weeklyRaidRewards || []);
+  if (weeklyRaidRewards !== null) state.weeklyRaidRewards = weeklyRaidRewards || [];
   if (weeklyCharacterChecks !== null) state.weeklyCharacterChecks = weeklyCharacterChecks || [];
-  if (goldRateSettings !== null) state.goldRateSetting = goldRateSettings?.[0] || state.goldRateSetting || { setting_key:'default', base_gold_manha:100, price_per_base_manwon:15, fee_rate:0.05 };
-  // 골드 체크 화면은 현재 레이드 주차를 기준으로 사용합니다.
-  // 페이지를 오래 켜둔 채 수요일 주차가 넘어가도 이전 week_label에 머물지 않도록 매 로드 시 갱신합니다.
-  state.currentGoldWeekLabel = getDefaultWeekLabel();
+  if (goldRateSettings !== null) {
+    state.goldRateSetting = goldRateSettings?.[0] || state.goldRateSetting || {
+      setting_key:'default', base_gold_manha:100, price_per_base_manwon:15, fee_rate:0.05
+    };
+  }
 
-const setting = settings?.[0] || null;
+  state.currentGoldWeekLabel = activeWeek;
 
-if (settings !== null) {
-  state.timeSlots = setting?.time_slots || state.timeSlots || [
-    "10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
-    "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00",
-    "19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00","23:30",
-    "00:00","00:30","01:00","01:30","02:00"
-  ];
+  const setting = settings?.[0] || null;
+  if (settings !== null) {
+    state.timeSlots = setting?.time_slots || state.timeSlots || [
+      "10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
+      "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00",
+      "19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00","23:30",
+      "00:00","00:30","01:00","01:30","02:00"
+    ];
 
-  state.scheduleBoards = setting?.board_configs || state.scheduleBoards || [{ id:'board-1', title:'이번 주 스케줄' }];
+    state.scheduleBoards = setting?.board_configs || state.scheduleBoards || [{ id:'board-1', title:'이번 주 스케줄' }];
 
-  const loadedToolLinks = Array.isArray(setting?.tool_links) ? setting.tool_links : [];
-  state.toolLinks =
-    loadedToolLinks.length > 0 && loadedToolLinks.some(link => String(link?.url || '').trim())
-      ? loadedToolLinks
-      : (state.toolLinks?.length ? state.toolLinks : DEFAULT_TOOL_LINKS);
-}
+    const loadedToolLinks = Array.isArray(setting?.tool_links) ? setting.tool_links : [];
+    state.toolLinks =
+      loadedToolLinks.length > 0 && loadedToolLinks.some(link => String(link?.url || '').trim())
+        ? loadedToolLinks
+        : (state.toolLinks?.length ? state.toolLinks : DEFAULT_TOOL_LINKS);
+  }
+
+  return true;
 }
 
 async function persistSettings() {
@@ -4021,18 +4014,17 @@ async function upsertWeeklyRaidReward(payload) {
   try {
     const { data, error } = await supabaseClient.from('weekly_raid_rewards')
       .upsert(payload, { onConflict:'week_label,character_id,raid_id' })
-      .select();
+      .select('*');
     if (error) throw error;
+    if (!data?.length) throw new Error('골드체크 저장 후 반환된 데이터가 없습니다.');
 
-    for (const row of (data || [])) {
-      rememberWeeklyRewardWrite(row);
-      upsertRealtimeArrayRow('weeklyRaidRewards', row, null);
-    }
-    if (data?.length) renderGoldCheck();
+    bumpDataRevision();
+    for (const row of data) upsertRealtimeArrayRow('weeklyRaidRewards', row, null);
+    renderGoldCheck();
     return data;
   } catch(e) {
-    console.error(e);
-    showToast('골드체크 저장 실패: SQL 확장 적용 여부를 확인해주세요.', 'error');
+    console.error('weekly_raid_rewards upsert error', e);
+    showToast(`골드체크 저장 실패: ${e?.message || 'DB 저장 오류'}`, 'error');
     return null;
   }
 }
@@ -4070,25 +4062,33 @@ async function setCharacterRaidReward(characterId, raidId, rewardType, scheduleS
     completed_at:new Date().toISOString()
   });
   if (inserted?.length) {
-    // 반환된 DB row를 이미 state에 반영했으므로 즉시 전체 reload로 다시 덮지 않습니다.
-    // Realtime/후속 동기화에서 서버값으로 자연스럽게 확정됩니다.
+    renderGoldCheck();
+    scheduleRealtimeReload('', 120);
+  } else {
+    // 실패 시 '처리중' 상태로 버튼이 고정되지 않도록 원래 화면을 다시 그립니다.
     renderGoldCheck();
   }
 }
 async function clearCharacterRaidReward(characterId, raidId) {
   const found = getCharacterReward(characterId, raidId);
   if (!found) return;
-  forgetWeeklyRewardWrite(found);
+
+  const ok = await dbDelete('weekly_raid_rewards', { id: found.id });
+  if (!ok) {
+    await reloadAndRender();
+    return;
+  }
+
   deleteRealtimeArrayRow('weeklyRaidRewards', found);
   renderGoldCheck();
-  const ok = await dbDelete('weekly_raid_rewards', { id: found.id });
-  if (!ok) await reloadAndRender();
+  scheduleRealtimeReload('', 120);
 }
 
 async function upsertWeeklyCharacterCheck(payload) {
   try {
     const { data, error } = await supabaseClient.from('weekly_character_checks').upsert(payload, { onConflict:'week_label,character_id,check_key' }).select();
     if (error) throw error;
+    bumpDataRevision();
     return data;
   } catch(e) {
     console.error(e);
@@ -4164,8 +4164,13 @@ async function applyScheduleRewardsFromSlot(slotId, forcedRewardType = null) {
 
     attempted += 1;
     const existing = getCharacterRewardForWeek(m.character_id, raid.id, activeWeek);
-    let rewardType = existing?.reward_type || forcedRewardType || (getGoldCountForWeek(m.character_id, activeWeek, raid.id) < 3 ? 'gold' : 'material');
-    if (!existing && rewardType === 'gold' && getGoldCountForWeek(m.character_id, activeWeek, raid.id) >= 3) {
+
+    // 이미 수동 체크했거나 다른 일정으로 체크된 레이드는 그대로 보존합니다.
+    // schedule_slot_id를 덮어쓰지 않아 나중에 이 일정의 완료를 해제해도 수동 체크가 삭제되지 않습니다.
+    if (existing) continue;
+
+    let rewardType = forcedRewardType || (getGoldCountForWeek(m.character_id, activeWeek, raid.id) < 3 ? 'gold' : 'material');
+    if (rewardType === 'gold' && getGoldCountForWeek(m.character_id, activeWeek, raid.id) >= 3) {
       rewardType = 'material';
     }
 
@@ -4190,9 +4195,8 @@ async function clearScheduleRewards(slotId) {
     v => v.week_label === activeWeek && v.is_completed !== false && v.schedule_slot_id === slotId
   );
   for (const r of targets) {
-    forgetWeeklyRewardWrite(r);
-    deleteRealtimeArrayRow('weeklyRaidRewards', r);
-    await dbDelete('weekly_raid_rewards', { id: r.id });
+    const ok = await dbDelete('weekly_raid_rewards', { id: r.id });
+    if (ok) deleteRealtimeArrayRow('weeklyRaidRewards', r);
   }
   renderGoldCheck();
 }
@@ -4207,9 +4211,8 @@ async function resetWeeklyRewards() {
   if (!(await appConfirm(`${label} 체크 ${total}개를 초기화할까요?
 스케줄/파티/캐릭터 데이터는 삭제되지 않습니다.`))) return;
   for (const r of rewardTargets) {
-    forgetWeeklyRewardWrite(r);
-    deleteRealtimeArrayRow('weeklyRaidRewards', r);
-    await dbDelete('weekly_raid_rewards', { id: r.id });
+    const ok = await dbDelete('weekly_raid_rewards', { id: r.id });
+    if (ok) deleteRealtimeArrayRow('weeklyRaidRewards', r);
   }
   for (const c of checkTargets) await dbDelete('weekly_character_checks', { id: c.id });
   await reloadAndRender();
@@ -4484,19 +4487,38 @@ document.addEventListener('keydown', (e) => {
 });
 
 async function reloadAndRender() {
-  const detailModalWasOpen = document.getElementById('detailModal')?.classList.contains('open');
-  const detailSlotId = state.currentDetailSlotId;
+  if (fullSyncRunning) {
+    fullSyncQueued = true;
+    return;
+  }
 
-  await loadAllData();
-  renderAll();
+  fullSyncRunning = true;
+  try {
+    do {
+      fullSyncQueued = false;
 
-  if (detailModalWasOpen && detailSlotId) {
-    if (state.scheduleSlots.some(v => v.id === detailSlotId)) {
-      openScheduleDetail(detailSlotId);
-    } else {
-      closeModal('detailModal');
-      state.currentDetailSlotId = null;
-    }
+      const detailModalWasOpen = document.getElementById('detailModal')?.classList.contains('open');
+      const detailSlotId = state.currentDetailSlotId;
+
+      const applied = await loadAllData();
+      if (!applied) {
+        fullSyncQueued = true;
+        continue;
+      }
+
+      renderAll();
+
+      if (detailModalWasOpen && detailSlotId) {
+        if (state.scheduleSlots.some(v => v.id === detailSlotId)) {
+          openScheduleDetail(detailSlotId);
+        } else {
+          closeModal('detailModal');
+          state.currentDetailSlotId = null;
+        }
+      }
+    } while (fullSyncQueued);
+  } finally {
+    fullSyncRunning = false;
   }
 }
 
@@ -4547,12 +4569,11 @@ function applyRealtimePayload(table, payload) {
   if (!target) return;
   const [arrayName, normalizeFn] = target;
 
+  bumpDataRevision();
   if (type === 'DELETE') {
-    if (table === 'weekly_raid_rewards') forgetWeeklyRewardWrite(incoming);
     deleteRealtimeArrayRow(arrayName, incoming);
   } else {
     upsertRealtimeArrayRow(arrayName, incoming, normalizeFn);
-    if (table === 'weekly_raid_rewards') rememberWeeklyRewardWrite(incoming);
   }
 
   // 일정 이동/완료처럼 사용자가 바로 체감하는 영역은 서버 재조회 전에 먼저 반영합니다.
@@ -4591,7 +4612,8 @@ function scheduleRealtimeReload(message = '', delay = 90) {
       return;
     }
     realtimeReloadPending = false;
-    await reloadAndRender();
+    if (fullSyncRunning) fullSyncQueued = true;
+    else await reloadAndRender();
     if (message) showToast(message, 'info');
   }, Math.max(0, delay));
 }
@@ -4618,6 +4640,10 @@ async function forceRealtimeSync() {
   clearTimeout(realtimeReloadTimer);
   realtimeReloadTimer = null;
   realtimeReloadPending = false;
+  if (fullSyncRunning) {
+    fullSyncQueued = true;
+    return;
+  }
   await reloadAndRender();
 }
 
@@ -4808,8 +4834,8 @@ async function exportBoardImage(boardId) {
 async function bootstrap() {
   bindModalCloseEvents();
   initSupabase();
-  await loadAllData();
-  renderAll();
+  const initialLoaded = await loadAllData();
+  if (initialLoaded !== false) renderAll();
   renderJobSelectOptions();
   renderRaidOptions();
   renderBoardOptions();
