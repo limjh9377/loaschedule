@@ -493,6 +493,8 @@ a{text-decoration:none;color:inherit}
   opacity:0;pointer-events:none;transition:.2s
 }
 .modal-overlay.open{opacity:1;pointer-events:auto}
+/* 개발자노트 수정모드 위에서도 공용 확인창이 항상 최상단에 표시 */
+#appDialogModal{z-index:1600}
 .modal{
   width:100%;max-width:560px;max-height:88vh;overflow:auto;background:#fff;border-radius:18px;
   box-shadow:var(--shadow-lg);transform:translateY(8px) scale(.97);opacity:0;transition:.2s
@@ -844,15 +846,42 @@ a{text-decoration:none;color:inherit}
 .devnote-trigger:hover{background:rgba(255,255,255,.15)}
 .devnote-unread-dot{
   position:absolute;
-  top:2px;right:2px;
-  width:8px;height:8px;
-  border-radius:50%;
-  background:#ef4444;
-  border:2px solid var(--navy);
-  box-sizing:content-box;
+  left:calc(100% + 8px);
+  top:50%;
+  transform:translateY(-50%);
+  height:24px;
+  padding:0 9px;
+  border-radius:999px;
   display:none;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  background:#ef4444;
+  color:#fff;
+  font-size:10px;
+  font-weight:800;
+  line-height:1;
+  box-shadow:0 3px 10px rgba(239,68,68,.34);
+  pointer-events:none;
+  z-index:3;
+  animation:devnoteUnreadPulse 1.7s ease-in-out infinite;
 }
-.devnote-trigger.unread .devnote-unread-dot{display:block}
+.devnote-unread-dot::before{
+  content:'';
+  position:absolute;
+  left:-5px;
+  top:50%;
+  transform:translateY(-50%);
+  width:0;height:0;
+  border-top:5px solid transparent;
+  border-bottom:5px solid transparent;
+  border-right:6px solid #ef4444;
+}
+.devnote-trigger.unread .devnote-unread-dot{display:inline-flex}
+@keyframes devnoteUnreadPulse{
+  0%,100%{box-shadow:0 3px 10px rgba(239,68,68,.28);transform:translateY(-50%) scale(1)}
+  50%{box-shadow:0 4px 16px rgba(239,68,68,.52);transform:translateY(-50%) scale(1.035)}
+}
 
 .devnote-modal{max-width:900px;height:min(88vh,920px);display:flex;flex-direction:column;overflow:hidden}
 .devnote-header{align-items:flex-start}
@@ -999,7 +1028,7 @@ a{text-decoration:none;color:inherit}
     게임 파티 스케줄러
     <button class="devnote-trigger" id="developerNotesTrigger" title="개발자 노트" onclick="openDeveloperNotes()">
       📢
-      <span class="devnote-unread-dot" aria-hidden="true"></span>
+      <span class="devnote-unread-dot" aria-hidden="true">업데이트!</span>
     </button>
   </div>
   <div class="nav-tabs">
