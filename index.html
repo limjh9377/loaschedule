@@ -826,6 +826,169 @@ a{text-decoration:none;color:inherit}
 .gold-extra-check.saving input{cursor:wait}
 @media (max-width:760px){.gold-character-head{align-items:flex-start}.gold-extra-checks{width:100%;justify-content:flex-start;margin-left:0}.gold-progress{width:100%;justify-content:flex-start}}
 
+
+/* =========================
+   개발자 노트
+   ========================= */
+.devnote-trigger{
+  position:relative;
+  width:30px;height:30px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:15px;
+  flex:0 0 auto;
+  transition:.15s;
+}
+.devnote-trigger:hover{background:rgba(255,255,255,.15)}
+.devnote-unread-dot{
+  position:absolute;
+  top:2px;right:2px;
+  width:8px;height:8px;
+  border-radius:50%;
+  background:#ef4444;
+  border:2px solid var(--navy);
+  box-sizing:content-box;
+  display:none;
+}
+.devnote-trigger.unread .devnote-unread-dot{display:block}
+
+.devnote-modal{max-width:900px;height:min(88vh,920px);display:flex;flex-direction:column;overflow:hidden}
+.devnote-header{align-items:flex-start}
+.devnote-header-icon{
+  width:40px;height:40px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:#ecfdf5;font-size:20px;flex:0 0 auto;margin-right:10px
+}
+.devnote-header-main{flex:1;min-width:0}
+.devnote-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.devnote-title{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.devnote-latest{
+  display:inline-flex;align-items:center;height:21px;padding:0 7px;border-radius:999px;
+  background:#dcfce7;color:#047857;font-size:10px;font-weight:700
+}
+.devnote-sub{font-size:11px;color:#64748b;line-height:1.55;margin-top:5px}
+.devnote-header-actions{display:flex;align-items:center;gap:7px}
+.devnote-edit-btn{
+  height:32px;padding:0 10px;border-radius:9px;border:1px solid #e2e8f0;
+  background:#fff;color:#475569;font-size:11px;font-weight:700
+}
+.devnote-edit-btn.active{background:#0f172a;color:#fff;border-color:#0f172a}
+
+.devnote-body{flex:1;overflow:auto;padding:14px 16px 20px;background:#f8fafc}
+.devnote-legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 2px 13px}
+.devnote-tag{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:44px;height:21px;padding:0 8px;border-radius:999px;
+  font-size:10px;font-weight:700;white-space:nowrap
+}
+.devnote-tag.new{background:#dcfce7;color:#047857}
+.devnote-tag.improve{background:#dbeafe;color:#1d4ed8}
+.devnote-tag.server{background:#ede9fe;color:#6d28d9}
+.devnote-tag.retired{background:#e5e7eb;color:#94a3b8}
+
+.devnote-version{
+  border:1px solid #dfe6ee;background:#fff;border-radius:14px;
+  margin-bottom:10px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.03)
+}
+.devnote-version[open]{border-color:#cbd5e1}
+.devnote-version summary{
+  list-style:none;cursor:pointer;padding:0;
+  display:grid;grid-template-columns:92px 1px minmax(0,1fr) 28px;
+  align-items:stretch;min-height:62px
+}
+.devnote-version summary::-webkit-details-marker{display:none}
+.devnote-version-id{
+  display:flex;align-items:center;justify-content:center;
+  padding:0 12px;font-size:13px;font-weight:700;color:#334155
+}
+.devnote-version-divider{width:1px;background:#e5e7eb;margin:12px 0}
+.devnote-version-main{min-width:0;display:flex;flex-direction:column;justify-content:center;padding:11px 16px}
+.devnote-version-title{font-size:14px;font-weight:700;color:#111827}
+.devnote-version-date{color:#94a3b8;font-size:11px;font-weight:600;margin-top:4px}
+.devnote-chevron{display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;transition:.15s}
+.devnote-version[open] .devnote-chevron{transform:rotate(90deg)}
+.devnote-version-content{border-top:1px solid #edf2f7;padding:5px 14px 12px}
+.devnote-feature{
+  display:grid;grid-template-columns:52px 7px minmax(0,1fr);
+  gap:8px;align-items:start;padding:9px 4px;border-bottom:1px dashed #edf2f7
+}
+.devnote-feature:last-child{border-bottom:0}
+.devnote-dot{width:5px;height:5px;border-radius:50%;background:#10b981;margin-top:7px}
+.devnote-feature-line{font-size:12.5px;line-height:1.55;color:#334155}
+.devnote-feature-line strong{font-weight:700;color:#0f172a}
+.devnote-feature.retired .devnote-dot{background:#cbd5e1}
+.devnote-feature.retired .devnote-feature-line{
+  color:#a1a1aa;text-decoration:line-through;text-decoration-thickness:1px
+}
+.devnote-feature.retired .devnote-feature-line strong{color:#9ca3af}
+.devnote-mark-green{color:#059669}.devnote-mark-blue{color:#2563eb}
+.devnote-mark-purple{color:#7c3aed}.devnote-mark-red{color:#dc2626}.devnote-mark-gray{color:#94a3b8}
+
+.devnote-edit-toolbar{
+  display:none;align-items:center;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:11px 12px;
+  border:1px solid #dbe3ec;background:#fff;border-radius:13px
+}
+.devnote-editing .devnote-edit-toolbar{display:flex}
+.devnote-toolbar-left,.devnote-toolbar-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.devnote-help{font-size:10.5px;color:#64748b;line-height:1.55}
+.devnote-btn{
+  height:33px;padding:0 10px;border-radius:9px;border:1px solid #dbe3ec;
+  background:#fff;color:#475569;font-size:11px;font-weight:700
+}
+.devnote-btn.primary{background:#10b981;border-color:#10b981;color:#fff}
+.devnote-btn.dark{background:#0f172a;border-color:#0f172a;color:#fff}
+.devnote-btn.danger{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+
+.devnote-editor-version{
+  border:1px solid #dbe3ec;border-radius:14px;background:#fff;margin-bottom:12px;overflow:hidden
+}
+.devnote-editor-head{
+  display:grid;grid-template-columns:110px 150px minmax(220px,1fr) auto;
+  gap:9px;padding:12px;background:#f8fafc;border-bottom:1px solid #e8edf3;align-items:end
+}
+.devnote-field label{display:block;font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:5px}
+.devnote-control{
+  width:100%;height:36px;border:1px solid #dbe3ec;border-radius:9px;
+  background:#fff;padding:0 10px;color:#0f172a;outline:none
+}
+.devnote-control:focus,.devnote-editor-text:focus{
+  border-color:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.13)
+}
+.devnote-editor-body{padding:10px 12px 12px}
+.devnote-editor-item{
+  display:grid;grid-template-columns:118px minmax(0,1fr) 34px;
+  gap:8px;align-items:start;padding:8px 0;border-bottom:1px dashed #e8edf3
+}
+.devnote-editor-item:last-of-type{border-bottom:0}
+.devnote-editor-text{
+  width:100%;min-height:58px;resize:vertical;border:1px solid #dbe3ec;border-radius:9px;
+  padding:9px 10px;outline:none;font-size:12px;line-height:1.5
+}
+.devnote-delete-small{
+  width:34px;height:34px;border:1px solid #fecdd3;border-radius:9px;background:#fff1f2;color:#be123c
+}
+.devnote-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.devnote-preview{
+  margin-top:7px;padding:8px 9px;border-radius:8px;background:#f8fafc;border:1px solid #edf2f7;
+  font-size:11.5px;color:#475569;line-height:1.5
+}
+.devnote-empty{padding:34px;text-align:center;color:#94a3b8;font-size:12px}
+
+.devnote-password-box{max-width:380px}
+.devnote-password-error{font-size:11px;color:#dc2626;min-height:17px;margin-top:6px}
+
+@media(max-width:720px){
+  .devnote-version summary{grid-template-columns:76px 1px 1fr 24px}
+  .devnote-feature{grid-template-columns:48px 6px minmax(0,1fr);gap:6px}
+  .devnote-editor-head{grid-template-columns:1fr 1fr}
+  .devnote-editor-head .devnote-title-field{grid-column:1/-1}
+  .devnote-editor-head .devnote-delete-version{grid-column:1/-1;justify-self:start}
+  .devnote-editor-item{grid-template-columns:100px minmax(0,1fr) 34px}
+}
+
 </style>
 </head>
 <body>
@@ -834,6 +997,10 @@ a{text-decoration:none;color:inherit}
   <div class="brand">
     <div class="brand-logo">🎮</div>
     게임 파티 스케줄러
+    <button class="devnote-trigger" id="developerNotesTrigger" title="개발자 노트" onclick="openDeveloperNotes()">
+      📢
+      <span class="devnote-unread-dot" aria-hidden="true"></span>
+    </button>
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" id="tab-schedule" onclick="switchTab('schedule')">스케줄</button>
@@ -1390,11 +1557,458 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
+
+<div class="modal-overlay" id="developerNotesModal">
+  <div class="modal devnote-modal" id="developerNotesModalBox">
+    <div class="modal-header devnote-header">
+      <div class="devnote-header-icon">📢</div>
+      <div class="devnote-header-main">
+        <div class="devnote-title-row">
+          <div class="devnote-title">개발자 노트</div>
+          <span class="devnote-latest" id="developerNotesLatest">LATEST</span>
+        </div>
+        <div class="devnote-sub">주요 기능 추가 및 시스템 변경 이력<br>신규 버전에서 대체된 기능은 회색으로 표시</div>
+      </div>
+      <div class="devnote-header-actions">
+        <button class="devnote-edit-btn" id="developerNotesEditBtn" onclick="requestDeveloperNotesEdit()">수정모드</button>
+        <button class="close-btn" onclick="closeDeveloperNotes()">✕</button>
+      </div>
+    </div>
+    <div class="devnote-body">
+      <div class="devnote-legend">
+        <span class="devnote-tag new">신규</span>
+        <span class="devnote-tag improve">개선</span>
+        <span class="devnote-tag server">서버</span>
+        <span class="devnote-tag retired">현재 미사용</span>
+      </div>
+
+      <div class="devnote-edit-toolbar">
+        <div class="devnote-toolbar-left">
+          <button class="devnote-btn primary" onclick="addDeveloperNoteVersion()">+ 버전 추가</button>
+          <span class="devnote-help">[bold]굵게[/bold] · [color=#e11d48]색상[/color]</span>
+        </div>
+        <div class="devnote-toolbar-right">
+          <button class="devnote-btn" onclick="cancelDeveloperNotesEdit()">취소</button>
+          <button class="devnote-btn dark" id="developerNotesSaveBtn" onclick="saveDeveloperNotes()">저장</button>
+        </div>
+      </div>
+
+      <div id="developerNotesView"></div>
+      <div id="developerNotesEditor" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="developerNotesPasswordModal">
+  <div class="modal sm devnote-password-box">
+    <div class="modal-header">
+      <div class="modal-title">개발자 노트 수정모드</div>
+      <button class="close-btn" onclick="closeModal('developerNotesPasswordModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>비밀번호</label>
+        <input class="form-control" id="developerNotesPassword" type="password" placeholder="비밀번호 입력"
+          onkeydown="if(event.key==='Enter') confirmDeveloperNotesPassword()">
+        <div class="devnote-password-error" id="developerNotesPasswordError"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('developerNotesPasswordModal')">취소</button>
+      <button class="btn btn-blue" onclick="confirmDeveloperNotesPassword()">확인</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
 const SUPABASE_URL = 'https://rkrwcvzvhlhuiqtswhdd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrcndjdnp2aGxodWlxdHN3aGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjI3MzksImV4cCI6MjA4ODg5ODczOX0.OCePvmiPhwAaAnstWUSqJdMBAqwFcfbTpahBm21P5wA';
+
+
+const DEVNOTE_LAST_SEEN_KEY = 'raidSchedulerDeveloperNotesLastSeenCreatedAt';
+const DEVNOTE_TYPE_INFO = {
+  new:{ label:'신규', cls:'new' },
+  improve:{ label:'개선', cls:'improve' },
+  server:{ label:'서버', cls:'server' },
+  retired:{ label:'현재 미사용', cls:'retired' }
+};
+let developerNotes = [];
+let developerNotesDraft = [];
+let developerNotesEditMode = false;
+let developerNotesEditPassword = '';
+let developerNotesSaving = false;
+
+function devnoteEscapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[ch]));
+}
+function formatDeveloperNoteText(text) {
+  let s = devnoteEscapeHtml(text ?? '');
+  s = s.replace(/\[bold\]([\s\S]*?)\[\/bold\]/gi, '<strong>$1</strong>');
+  s = s.replace(/\[color=(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\]([\s\S]*?)\[\/color\]/gi, '<span style="color:$1">$2</span>');
+  s = s.replace(/\[green\]([\s\S]*?)\[\/green\]/gi, '<span class="devnote-mark-green">$1</span>');
+  s = s.replace(/\[blue\]([\s\S]*?)\[\/blue\]/gi, '<span class="devnote-mark-blue">$1</span>');
+  s = s.replace(/\[purple\]([\s\S]*?)\[\/purple\]/gi, '<span class="devnote-mark-purple">$1</span>');
+  s = s.replace(/\[red\]([\s\S]*?)\[\/red\]/gi, '<span class="devnote-mark-red">$1</span>');
+  s = s.replace(/\[gray\]([\s\S]*?)\[\/gray\]/gi, '<span class="devnote-mark-gray">$1</span>');
+  return s.replace(/\n/g, '<br>');
+}
+function developerNoteVersionParts(version) {
+  return String(version || '').replace(/^v/i,'').trim().split('.').map(v => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : 0;
+  });
+}
+function compareDeveloperNoteVersions(a, b) {
+  const A = developerNoteVersionParts(a.version);
+  const B = developerNoteVersionParts(b.version);
+  const len = Math.max(A.length, B.length);
+  for (let i=0; i<len; i++) {
+    const av = A[i] || 0;
+    const bv = B[i] || 0;
+    if (av !== bv) return bv - av;
+  }
+  return String(b.note_date || '').localeCompare(String(a.note_date || ''));
+}
+function sortedDeveloperNotes(source = developerNotes) {
+  return JSON.parse(JSON.stringify(source || [])).sort(compareDeveloperNoteVersions);
+}
+function getLatestDeveloperNoteCreatedAt() {
+  let latest = 0;
+  for (const note of developerNotes) {
+    const ts = Date.parse(note.created_at || '');
+    if (Number.isFinite(ts) && ts > latest) latest = ts;
+  }
+  return latest ? new Date(latest).toISOString() : '';
+}
+function updateDeveloperNotesUnreadDot() {
+  const trigger = document.getElementById('developerNotesTrigger');
+  if (!trigger) return;
+
+  const latest = getLatestDeveloperNoteCreatedAt();
+  if (!latest) {
+    trigger.classList.remove('unread');
+    return;
+  }
+
+  const seen = localStorage.getItem(DEVNOTE_LAST_SEEN_KEY) || '';
+  const hasUnread = !seen || Date.parse(seen) < Date.parse(latest);
+  trigger.classList.toggle('unread', hasUnread);
+}
+function markDeveloperNotesSeen() {
+  const latest = getLatestDeveloperNoteCreatedAt();
+  if (latest) localStorage.setItem(DEVNOTE_LAST_SEEN_KEY, latest);
+  updateDeveloperNotesUnreadDot();
+}
+async function loadDeveloperNotes({ render = true } = {}) {
+  const rows = await dbFetch('developer_notes', { order:{ col:'created_at', asc:true } });
+  if (rows === null) return false;
+  developerNotes = (rows || []).map(row => ({
+    ...row,
+    items: Array.isArray(row.items) ? row.items : []
+  }));
+  if (render && !developerNotesEditMode) renderDeveloperNotesView();
+  updateDeveloperNotesUnreadDot();
+  return true;
+}
+function renderDeveloperNotesView() {
+  const wrap = document.getElementById('developerNotesView');
+  const latestBadge = document.getElementById('developerNotesLatest');
+  if (!wrap || !latestBadge) return;
+
+  const notes = sortedDeveloperNotes();
+  latestBadge.textContent = notes.length ? `LATEST v${notes[0].version}` : 'LATEST';
+
+  if (!notes.length) {
+    wrap.innerHTML = '<div class="devnote-empty">등록된 개발자 노트가 없습니다.</div>';
+    return;
+  }
+
+  wrap.innerHTML = notes.map((note, idx) => `
+    <details class="devnote-version" ${idx === 0 ? 'open' : ''}>
+      <summary>
+        <div class="devnote-version-id">v${devnoteEscapeHtml(note.version)}</div>
+        <div class="devnote-version-divider"></div>
+        <div class="devnote-version-main">
+          <div class="devnote-version-title">${devnoteEscapeHtml(note.title)}</div>
+          <div class="devnote-version-date">${devnoteEscapeHtml(note.note_date)}</div>
+        </div>
+        <div class="devnote-chevron">▶</div>
+      </summary>
+      <div class="devnote-version-content">
+        ${(note.items || []).map(item => {
+          const info = DEVNOTE_TYPE_INFO[item.type] || DEVNOTE_TYPE_INFO.new;
+          return `
+            <div class="devnote-feature ${item.type === 'retired' ? 'retired' : ''}">
+              <div><span class="devnote-tag ${info.cls}">${info.label}</span></div>
+              <div class="devnote-dot"></div>
+              <div class="devnote-feature-line">${formatDeveloperNoteText(item.text)}</div>
+            </div>
+          `;
+        }).join('') || '<div class="devnote-empty" style="padding:18px">세부항목 없음</div>'}
+      </div>
+    </details>
+  `).join('');
+}
+async function openDeveloperNotes() {
+  if (!developerNotes.length) await loadDeveloperNotes({ render:true });
+  renderDeveloperNotesView();
+  openModal('developerNotesModal');
+  // 한 번이라도 팝업에 진입한 시점부터 현재까지의 노트는 읽음 처리
+  markDeveloperNotesSeen();
+}
+function closeDeveloperNotes() {
+  if (developerNotesEditMode) cancelDeveloperNotesEdit();
+  closeModal('developerNotesModal');
+}
+function requestDeveloperNotesEdit() {
+  if (developerNotesEditMode) return;
+  const input = document.getElementById('developerNotesPassword');
+  const error = document.getElementById('developerNotesPasswordError');
+  if (input) input.value = '';
+  if (error) error.textContent = '';
+  openModal('developerNotesPasswordModal');
+  setTimeout(() => input?.focus(), 50);
+}
+async function confirmDeveloperNotesPassword() {
+  const input = document.getElementById('developerNotesPassword');
+  const errorEl = document.getElementById('developerNotesPasswordError');
+  const password = input?.value || '';
+  if (errorEl) errorEl.textContent = '';
+
+  try {
+    const { data, error } = await supabaseClient.rpc('verify_developer_notes_password', { p_password: password });
+    if (error) throw error;
+    if (data !== true) {
+      if (errorEl) errorEl.textContent = '비밀번호가 맞지 않습니다.';
+      return;
+    }
+    developerNotesEditPassword = password;
+    closeModal('developerNotesPasswordModal');
+    enterDeveloperNotesEditMode();
+  } catch (e) {
+    console.error('developer notes password verify error', e);
+    if (errorEl) errorEl.textContent = '비밀번호 확인에 실패했습니다.';
+  }
+}
+function enterDeveloperNotesEditMode() {
+  developerNotesEditMode = true;
+  developerNotesDraft = sortedDeveloperNotes();
+  document.getElementById('developerNotesModalBox')?.classList.add('devnote-editing');
+  const btn = document.getElementById('developerNotesEditBtn');
+  if (btn) {
+    btn.classList.add('active');
+    btn.textContent = '수정 중';
+  }
+  const view = document.getElementById('developerNotesView');
+  const editor = document.getElementById('developerNotesEditor');
+  if (view) view.style.display = 'none';
+  if (editor) editor.style.display = 'block';
+  renderDeveloperNotesEditor();
+}
+function cancelDeveloperNotesEdit() {
+  developerNotesEditMode = false;
+  developerNotesDraft = [];
+  developerNotesEditPassword = '';
+  document.getElementById('developerNotesModalBox')?.classList.remove('devnote-editing');
+  const btn = document.getElementById('developerNotesEditBtn');
+  if (btn) {
+    btn.classList.remove('active');
+    btn.textContent = '수정모드';
+  }
+  const view = document.getElementById('developerNotesView');
+  const editor = document.getElementById('developerNotesEditor');
+  if (view) view.style.display = 'block';
+  if (editor) editor.style.display = 'none';
+  renderDeveloperNotesView();
+}
+function developerNoteTypeOptions(selected) {
+  return Object.entries(DEVNOTE_TYPE_INFO).map(([key, info]) =>
+    `<option value="${key}" ${key === selected ? 'selected' : ''}>${info.label}</option>`
+  ).join('');
+}
+function renderDeveloperNotesEditor() {
+  const wrap = document.getElementById('developerNotesEditor');
+  if (!wrap) return;
+  developerNotesDraft = sortedDeveloperNotes(developerNotesDraft);
+
+  if (!developerNotesDraft.length) {
+    wrap.innerHTML = '<div class="devnote-empty">버전이 없습니다. 위의 + 버전 추가를 눌러 추가하세요.</div>';
+    return;
+  }
+
+  wrap.innerHTML = developerNotesDraft.map((note, vi) => `
+    <div class="devnote-editor-version" data-vi="${vi}">
+      <div class="devnote-editor-head">
+        <div class="devnote-field">
+          <label>버전</label>
+          <input class="devnote-control devnote-version-input" value="${devnoteEscapeHtml(note.version)}" placeholder="3.2">
+        </div>
+        <div class="devnote-field">
+          <label>날짜</label>
+          <input class="devnote-control devnote-date-input" type="date" value="${devnoteEscapeHtml(note.note_date || '')}">
+        </div>
+        <div class="devnote-field devnote-title-field">
+          <label>타이틀</label>
+          <input class="devnote-control devnote-title-input" value="${devnoteEscapeHtml(note.title)}" placeholder="변경사항 제목">
+        </div>
+        <button class="devnote-btn danger devnote-delete-version" onclick="deleteDeveloperNoteVersion(${vi})">버전 삭제</button>
+      </div>
+      <div class="devnote-editor-body">
+        ${(note.items || []).map((item, ii) => `
+          <div class="devnote-editor-item">
+            <select class="devnote-control devnote-type-select">${developerNoteTypeOptions(item.type)}</select>
+            <div>
+              <textarea class="devnote-editor-text" oninput="previewDeveloperNoteItem(this)">${devnoteEscapeHtml(item.text)}</textarea>
+              <div class="devnote-preview">${formatDeveloperNoteText(item.text)}</div>
+            </div>
+            <button class="devnote-delete-small" onclick="deleteDeveloperNoteItem(${vi},${ii})">✕</button>
+          </div>
+        `).join('')}
+        <div class="devnote-editor-footer">
+          <button class="devnote-btn" onclick="addDeveloperNoteItem(${vi})">+ 세부항목 추가</button>
+          <span class="devnote-help">신규 / 개선 / 서버 / 현재 미사용</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+function previewDeveloperNoteItem(textarea) {
+  const preview = textarea?.parentElement?.querySelector('.devnote-preview');
+  if (preview) preview.innerHTML = formatDeveloperNoteText(textarea.value);
+}
+function syncDeveloperNotesDraftFromDom() {
+  const cards = [...document.querySelectorAll('#developerNotesEditor .devnote-editor-version')];
+  developerNotesDraft = cards.map((card, vi) => {
+    const previous = developerNotesDraft[vi] || {};
+    const items = [...card.querySelectorAll('.devnote-editor-item')].map(row => ({
+      type: row.querySelector('.devnote-type-select')?.value || 'new',
+      text: row.querySelector('.devnote-editor-text')?.value || ''
+    }));
+    return {
+      id: previous.id || null,
+      version: card.querySelector('.devnote-version-input')?.value?.trim() || '',
+      note_date: card.querySelector('.devnote-date-input')?.value || '',
+      title: card.querySelector('.devnote-title-input')?.value?.trim() || '',
+      items,
+      created_at: previous.created_at || null
+    };
+  });
+}
+function addDeveloperNoteVersion() {
+  syncDeveloperNotesDraftFromDom();
+  developerNotesDraft.push({
+    id:null,
+    version:'',
+    note_date:new Date().toISOString().slice(0,10),
+    title:'새 업데이트',
+    items:[{ type:'new', text:'[bold]새 기능[/bold] — 내용 입력' }]
+  });
+  renderDeveloperNotesEditor();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('#developerNotesEditor .devnote-editor-version');
+    cards[cards.length - 1]?.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 30);
+}
+async function deleteDeveloperNoteVersion(vi) {
+  syncDeveloperNotesDraftFromDom();
+  if (!(await appConfirm('이 버전을 삭제할까요?'))) return;
+  developerNotesDraft.splice(vi, 1);
+  renderDeveloperNotesEditor();
+}
+function addDeveloperNoteItem(vi) {
+  syncDeveloperNotesDraftFromDom();
+  const note = developerNotesDraft[vi];
+  if (!note) return;
+  note.items = note.items || [];
+  note.items.push({ type:'new', text:'' });
+  renderDeveloperNotesEditor();
+}
+function deleteDeveloperNoteItem(vi, ii) {
+  syncDeveloperNotesDraftFromDom();
+  developerNotesDraft[vi]?.items?.splice(ii, 1);
+  renderDeveloperNotesEditor();
+}
+async function saveDeveloperNotes() {
+  if (developerNotesSaving) return;
+  syncDeveloperNotesDraftFromDom();
+
+  const cleaned = developerNotesDraft.map(note => ({
+    id: note.id || null,
+    version: String(note.version || '').replace(/^v/i,'').trim(),
+    note_date: note.note_date || '',
+    title: String(note.title || '').trim(),
+    items: (note.items || []).map(item => ({
+      type: DEVNOTE_TYPE_INFO[item.type] ? item.type : 'new',
+      text: String(item.text || '').trim()
+    })).filter(item => item.text)
+  }));
+
+  if (cleaned.some(note => !note.version || !note.note_date || !note.title)) {
+    showToast('버전, 날짜, 타이틀을 모두 입력해주세요.', 'error');
+    return;
+  }
+  const versions = cleaned.map(note => note.version);
+  if (new Set(versions).size !== versions.length) {
+    showToast('같은 버전을 중복으로 등록할 수 없습니다.', 'error');
+    return;
+  }
+
+  developerNotesSaving = true;
+  const saveBtn = document.getElementById('developerNotesSaveBtn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장중';
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc('save_developer_notes_snapshot', {
+      p_password: developerNotesEditPassword,
+      p_notes: cleaned
+    });
+    if (error) throw error;
+
+    developerNotes = (data || []).map(row => ({
+      ...row,
+      items: Array.isArray(row.items) ? row.items : []
+    }));
+    developerNotesEditMode = false;
+    developerNotesDraft = [];
+    developerNotesEditPassword = '';
+    document.getElementById('developerNotesModalBox')?.classList.remove('devnote-editing');
+    const editBtn = document.getElementById('developerNotesEditBtn');
+    if (editBtn) {
+      editBtn.classList.remove('active');
+      editBtn.textContent = '수정모드';
+    }
+    document.getElementById('developerNotesView').style.display = 'block';
+    document.getElementById('developerNotesEditor').style.display = 'none';
+    renderDeveloperNotesView();
+
+    // 작성자는 저장 직후 내용을 보고 있으므로 읽음 처리
+    markDeveloperNotesSeen();
+    showToast('개발자 노트를 저장했습니다.');
+  } catch (e) {
+    console.error('developer notes save error', e);
+    const msg = String(e?.message || '');
+    showToast(msg.includes('INVALID_PASSWORD') ? '비밀번호가 맞지 않습니다.' : '개발자 노트 저장에 실패했습니다.', 'error');
+  } finally {
+    developerNotesSaving = false;
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '저장';
+    }
+  }
+}
+async function handleDeveloperNotesRealtime(payload) {
+  // 다른 사람이 새 버전을 추가하면 새 created_at이 생기므로,
+  // 읽지 않은 사용자에게 빨간 점이 즉시 다시 표시됩니다.
+  await loadDeveloperNotes({ render: !developerNotesEditMode });
+}
+
 
 const DEFAULT_TOOL_LINKS = [
   { id:'tool-1', label:'로스트아크 홈페이지', url:'https://lostark.game.onstove.com/Main' },
@@ -1867,7 +2481,9 @@ function appAlert(message, title = '안내') {
 function bindModalCloseEvents() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', function(e){
-      if (e.target === this) closeModal(this.id);
+      if (e.target !== this) return;
+      if (this.id === 'developerNotesModal') closeDeveloperNotes();
+      else closeModal(this.id);
     });
   });
 }
@@ -4689,6 +5305,9 @@ document.addEventListener('dragend', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     clearScheduleMultiSelection();
+    if (document.getElementById('developerNotesModal')?.classList.contains('open')) {
+      cancelDeveloperNotesEdit();
+    }
     document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
     document.body.style.overflow = '';
   }
@@ -4922,6 +5541,9 @@ async function subscribeRealtime() {
     .on('postgres_changes', { event:'*', schema:'public', table:'schedule_settings' },
       payload => handleRealtimeChange('schedule_settings', payload))
 
+    .on('postgres_changes', { event:'*', schema:'public', table:'developer_notes' },
+      payload => handleDeveloperNotesRealtime(payload))
+
     .subscribe(async (status, err) => {
       realtimeStatus = status;
       console.log('Realtime status:', status, err);
@@ -5050,6 +5672,7 @@ async function bootstrap() {
   initSupabase();
   const initialLoaded = await loadAllData();
   if (initialLoaded !== false) renderAll();
+  await loadDeveloperNotes({ render:true });
   renderJobSelectOptions();
   renderRaidOptions();
   renderBoardOptions();
