@@ -1971,7 +1971,17 @@ async function saveDeveloperNotes() {
     });
     if (error) throw error;
 
-    developerNotes = (data || []).map(row => ({
+    let savedRows = data;
+    if (typeof savedRows === 'string') {
+      try { savedRows = JSON.parse(savedRows); } catch (_) { savedRows = null; }
+    }
+    if (!Array.isArray(savedRows)) {
+      const reloaded = await dbFetch('developer_notes', { order:{ col:'created_at', asc:true } });
+      if (!Array.isArray(reloaded)) throw new Error('저장 후 개발자 노트를 다시 불러오지 못했습니다.');
+      savedRows = reloaded;
+    }
+
+    developerNotes = savedRows.map(row => ({
       ...row,
       items: Array.isArray(row.items) ? row.items : []
     }));
@@ -1993,8 +2003,12 @@ async function saveDeveloperNotes() {
     showToast('개발자 노트를 저장했습니다.');
   } catch (e) {
     console.error('developer notes save error', e);
-    const msg = String(e?.message || '');
-    showToast(msg.includes('INVALID_PASSWORD') ? '비밀번호가 맞지 않습니다.' : '개발자 노트 저장에 실패했습니다.', 'error');
+    const msg = String(e?.message || e?.details || e?.hint || '알 수 없는 오류');
+    if (msg.includes('INVALID_PASSWORD')) {
+      showToast('비밀번호가 맞지 않습니다.', 'error');
+    } else {
+      showToast(`개발자 노트 저장 실패: ${msg.slice(0, 120)}`, 'error');
+    }
   } finally {
     developerNotesSaving = false;
     if (saveBtn) {
