@@ -322,6 +322,14 @@ a{text-decoration:none;color:inherit}
   box-shadow:0 8px 18px rgba(15,23,42,.12);cursor:grab;user-select:none
 }
 .event-block:active{cursor:grabbing}
+.event-block.multi-selected{
+  outline:3px solid #2563eb !important;
+  outline-offset:2px;
+  box-shadow:0 0 0 3px rgba(37,99,235,.16),0 8px 18px rgba(15,23,42,.14) !important;
+}
+.event-block.multi-selected.completed{
+  outline-color:#2563eb !important;
+}
 .event-block.saving{
   cursor:wait !important;
   opacity:.72;
@@ -1476,6 +1484,51 @@ const scheduleMutationLocks = new Set();
 let currentDragSession = null;
 let dragSessionSeq = 0;
 
+// Shift + 클릭 다중 선택
+const selectedScheduleIds = new Set();
+let scheduleDragJustFinishedUntil = 0;
+const SCHEDULE_DAY_ORDER = [3, 4, 5, 6, 7, 1, 2];
+
+function getScheduleDayIndex(day) {
+  return SCHEDULE_DAY_ORDER.indexOf(Number(day));
+}
+function getScheduleDayByIndex(index) {
+  const normalized = ((index % SCHEDULE_DAY_ORDER.length) + SCHEDULE_DAY_ORDER.length) % SCHEDULE_DAY_ORDER.length;
+  return SCHEDULE_DAY_ORDER[normalized];
+}
+function hasScheduleMultiSelection() {
+  return selectedScheduleIds.size > 0;
+}
+function pruneScheduleMultiSelection() {
+  const existing = new Set(state.scheduleSlots.map(v => v.id));
+  [...selectedScheduleIds].forEach(id => {
+    if (!existing.has(id)) selectedScheduleIds.delete(id);
+  });
+}
+function syncScheduleSelectionClasses() {
+  document.querySelectorAll('.event-block[data-slot-id]').forEach(el => {
+    el.classList.toggle('multi-selected', selectedScheduleIds.has(el.dataset.slotId));
+  });
+}
+function clearScheduleMultiSelection() {
+  if (!selectedScheduleIds.size) return false;
+  selectedScheduleIds.clear();
+  syncScheduleSelectionClasses();
+  return true;
+}
+function toggleScheduleMultiSelection(slotId) {
+  if (selectedScheduleIds.has(slotId)) selectedScheduleIds.delete(slotId);
+  else selectedScheduleIds.add(slotId);
+  syncScheduleSelectionClasses();
+}
+function getSelectedScheduleIdsForDrag(slotId) {
+  if (selectedScheduleIds.has(slotId)) {
+    return [...selectedScheduleIds].filter(id => state.scheduleSlots.some(v => v.id === id));
+  }
+  if (selectedScheduleIds.size) clearScheduleMultiSelection();
+  return [slotId];
+}
+
 function beginScheduleInteraction() {
   scheduleInteractionDepth += 1;
   suppressRealtime(30000);
@@ -2182,6 +2235,7 @@ function getOverlappingScheduleSlotIds(boardId, day) {
 }
 
 function renderScheduleBoards() {
+  pruneScheduleMultiSelection();
   const wrap = document.getElementById('scheduleBoardsWrap');
   wrap.innerHTML = state.scheduleBoards.map(board => {
     const slotCount = state.scheduleSlots.filter(v => (v.board_id || 'board-1') === board.id).length;
@@ -2303,7 +2357,7 @@ function renderSingleScheduleBoard(boardId) {
       const badgeTextColor = isLightColor(color) ? '#111827' : '#ffffff';
 
       html += `
-        <div class="event-block ${isEmptyTime ? 'empty-time' : ''} ${slot.is_completed ? 'completed' : ''} ${absentCount > 0 ? 'has-absent' : ''} ${overlappingSlotIds.has(slot.id) ? 'has-overlap' : ''} ${isScheduleMutationLocked(slot.id) ? 'saving' : ''} ${isCompact ? 'compact' : ''}"
+        <div class="event-block ${isEmptyTime ? 'empty-time' : ''} ${slot.is_completed ? 'completed' : ''} ${absentCount > 0 ? 'has-absent' : ''} ${overlappingSlotIds.has(slot.id) ? 'has-overlap' : ''} ${isScheduleMutationLocked(slot.id) ? 'saving' : ''} ${selectedScheduleIds.has(slot.id) ? 'multi-selected' : ''} ${isCompact ? 'compact' : ''}"
           data-slot-id="${slot.id}"
           draggable="${isScheduleMutationLocked(slot.id) ? 'false' : 'true'}"
           ondragstart="onScheduleDragStart(event, '${slot.id}')"
@@ -2339,7 +2393,7 @@ function buildHitAreas(boardId, day) {
       ondragover="onScheduleDragOver(event)"
       ondragleave="onScheduleDragLeave(event)"
       ondrop="onScheduleDrop(event, '${boardId}', ${day}, '${time}')"
-      onclick="quickAddSchedule('${boardId}', ${day}, '${time}')"></div>
+      onclick="handleScheduleGridClick(event, '${boardId}', ${day}, '${time}')"></div>
   `).join('');
 }
 
@@ -2372,11 +2426,32 @@ function handleScheduleBlockClick(event, slotId, el) {
     resizeState.ignoreClick = false;
     return;
   }
+  if (Date.now() < scheduleDragJustFinishedUntil) return;
+
+  if (event.shiftKey) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleScheduleMultiSelection(slotId);
+    return;
+  }
+
+  if (hasScheduleMultiSelection()) clearScheduleMultiSelection();
+
   const edge = getResizeEdgeFromMouse(event, el);
   if (edge) return;
   openScheduleDetail(slotId);
 }
+function handleScheduleGridClick(event, boardId, day, time) {
+  if (hasScheduleMultiSelection()) {
+    event.preventDefault();
+    event.stopPropagation();
+    clearScheduleMultiSelection();
+    return;
+  }
+  quickAddSchedule(boardId, day, time);
+}
 function maybeStartResizeSchedule(event, slotId, el) {
+  if (event.shiftKey) return;
   const edge = getResizeEdgeFromMouse(event, el);
   if (!edge) return;
   startResizeSchedule(event, slotId, edge);
@@ -4384,28 +4459,89 @@ async function removeTimeSlot(time) {
   renderScheduleBoards();
 }
 
+async function dbMoveScheduleSlotsBatch(moves) {
+  if (!isSupabaseConnected || !Array.isArray(moves) || !moves.length) return null;
+  try {
+    const { data, error } = await supabaseClient.rpc('move_schedule_slots_batch', { moves });
+    if (error) throw error;
+
+    bumpDataRevision();
+    (data || []).forEach(updated => {
+      const idx = state.scheduleSlots.findIndex(v => v.id === updated.id);
+      if (idx >= 0) {
+        state.scheduleSlots[idx] = {
+          ...state.scheduleSlots[idx],
+          ...updated,
+          board_id: updated.board_id || 'board-1',
+          is_completed: !!updated.is_completed
+        };
+      }
+    });
+    return data || [];
+  } catch (e) {
+    console.error('batch schedule move error', e);
+    const msg = String(e?.message || '');
+    if (msg.includes('move_schedule_slots_batch') || msg.includes('function')) {
+      showToast('다중 이동 SQL이 적용되지 않았습니다. v19 SQL을 먼저 실행해주세요.', 'error');
+    } else if (msg.includes('SCHEDULE_CONFLICT')) {
+      showToast('선택한 일정 중 다른 사용자가 먼저 변경한 일정이 있어 이동을 취소했습니다.', 'error');
+    } else {
+      showToast(e?.message || '선택 일정 이동 실패', 'error');
+    }
+    return null;
+  }
+}
+
 function onScheduleDragStart(e, slotId) {
   if (resizeState.slotId || isScheduleMutationLocked(slotId)) {
     e.preventDefault();
     return;
   }
 
-  const slot = state.scheduleSlots.find(v => v.id === slotId);
-  if (!slot) {
+  const anchorSlot = state.scheduleSlots.find(v => v.id === slotId);
+  if (!anchorSlot) {
     e.preventDefault();
     return;
   }
+
+  const slotIds = getSelectedScheduleIdsForDrag(slotId);
+  const slots = slotIds
+    .map(id => state.scheduleSlots.find(v => v.id === id))
+    .filter(Boolean);
+
+  if (!slots.length || slots.some(v => isScheduleMutationLocked(v.id))) {
+    e.preventDefault();
+    return;
+  }
+
+  const snapshots = slots.map(slot => {
+    const range = getAdjustedRangeFromSlot(slot);
+    return {
+      id: slot.id,
+      board_id: slot.board_id || 'board-1',
+      day_of_week: slot.day_of_week,
+      dayIndex: getScheduleDayIndex(slot.day_of_week),
+      start_time: normalizeTime(slot.start_time),
+      end_time: normalizeTime(slot.end_time),
+      startAdj: range.startAdj,
+      endAdj: range.endAdj,
+      expectedUpdatedAt: slot.updated_at || null
+    };
+  });
 
   const token = ++dragSessionSeq;
   currentDragSession = {
     token,
     slotId,
-    expectedVersion: slot.updated_at || null,
+    slotIds: snapshots.map(v => v.id),
+    snapshots,
+    anchorSnapshot: snapshots.find(v => v.id === slotId),
+    isMulti: snapshots.length > 1,
     dropClaimed: false
   };
 
   draggedScheduleId = slotId;
-  draggedScheduleVersion = slot.updated_at || null;
+  draggedScheduleVersion = anchorSlot.updated_at || null;
   beginScheduleInteraction();
 
   e.dataTransfer.setData('text/plain', slotId);
@@ -4424,53 +4560,124 @@ async function onScheduleDrop(e, boardId, day, startTime) {
 
   const session = currentDragSession;
   const slotId = session?.slotId || draggedScheduleId || e.dataTransfer.getData('text/plain');
-  const expectedVersion = session?.expectedVersion ?? draggedScheduleVersion;
+  const expectedVersion = session?.anchorSnapshot?.expectedUpdatedAt ?? draggedScheduleVersion;
 
   if (session) session.dropClaimed = true;
   currentDragSession = null;
   draggedScheduleId = null;
   draggedScheduleVersion = null;
 
-  const slot = state.scheduleSlots.find(v => v.id === slotId);
-  if (!slot) {
+  const anchorSlot = state.scheduleSlots.find(v => v.id === slotId);
+  if (!anchorSlot) {
+    clearScheduleMultiSelection();
     endScheduleInteraction();
     return;
   }
 
-  // 같은 카드는 직전 저장이 끝나기 전 다시 잡지 못하게 잠급니다.
-  scheduleMutationLocks.add(slotId);
+  const snapshots = session?.snapshots?.length
+    ? session.snapshots
+    : [{
+        id: anchorSlot.id,
+        board_id: anchorSlot.board_id || 'board-1',
+        day_of_week: anchorSlot.day_of_week,
+        dayIndex: getScheduleDayIndex(anchorSlot.day_of_week),
+        start_time: normalizeTime(anchorSlot.start_time),
+        end_time: normalizeTime(anchorSlot.end_time),
+        startAdj: getAdjustedRangeFromSlot(anchorSlot).startAdj,
+        endAdj: getAdjustedRangeFromSlot(anchorSlot).endAdj,
+        expectedUpdatedAt: expectedVersion
+      }];
 
-  let duration = timeToMinutes(normalizeTime(slot.end_time)) - timeToMinutes(normalizeTime(slot.start_time));
-  if (duration <= 0) duration += 1440;
+  const anchorSnapshot = session?.anchorSnapshot || snapshots[0];
+  const targetDayIndex = getScheduleDayIndex(day);
+  const targetStartAdj = getAdjustedMinutes(startTime);
+  const dayDelta = targetDayIndex - anchorSnapshot.dayIndex;
+  const minuteDelta = targetStartAdj - anchorSnapshot.startAdj;
 
-  const newStart = normalizeTime(startTime);
-  const newEnd = minutesToTime((timeToMinutes(newStart) + duration) % 1440);
+  const sortedAdj = getSortedTimeSlots().map(getAdjustedMinutes);
+  const minAdj = sortedAdj[0];
+  const maxAdj = sortedAdj[sortedAdj.length - 1] + 30;
 
-  // 낙하 직후에는 화면을 즉시 이동시키되, 저장 중 표시 + 재드래그 잠금을 같이 렌더링합니다.
-  slot.board_id = boardId;
-  slot.day_of_week = day;
-  slot.start_time = newStart;
-  slot.end_time = newEnd;
+  const moves = snapshots.map(s => ({
+    id: s.id,
+    expected_updated_at: s.expectedUpdatedAt,
+    board_id: boardId,
+    day_of_week: getScheduleDayByIndex(s.dayIndex + dayDelta),
+    start_time: minutesToTime(s.startAdj + minuteDelta),
+    end_time: minutesToTime(s.endAdj + minuteDelta),
+    _startAdj: s.startAdj + minuteDelta,
+    _endAdj: s.endAdj + minuteDelta
+  }));
+
+  // 묶음 중 하나라도 현재 시간표 범위를 벗어나면 전체 이동을 취소합니다.
+  if (moves.some(v => v._startAdj < minAdj || v._endAdj > maxAdj)) {
+    showToast('선택한 일정 중 시간표 범위를 벗어나는 카드가 있어 이동하지 않았습니다.', 'error');
+    clearScheduleMultiSelection();
+    scheduleDragJustFinishedUntil = Date.now() + 180;
+    endScheduleInteraction();
+    return;
+  }
+
+  const movedIds = moves.map(v => v.id);
+  movedIds.forEach(id => scheduleMutationLocks.add(id));
+
+  // 낙하 즉시 로컬 화면을 같이 이동시켜 묶음 이동이 바로 보이게 합니다.
+  moves.forEach(move => {
+    const slot = state.scheduleSlots.find(v => v.id === move.id);
+    if (!slot) return;
+    slot.board_id = move.board_id;
+    slot.day_of_week = move.day_of_week;
+    slot.start_time = move.start_time;
+    slot.end_time = move.end_time;
+  });
   renderScheduleBoards();
   renderAssignedPartyPanel();
 
+  let success = false;
   try {
-    await dbUpdateScheduleIfUnchanged(
-      slotId,
-      expectedVersion,
-      { board_id: boardId, day_of_week: day, start_time: newStart, end_time: newEnd },
-      '다른 사용자가 먼저 이 일정을 이동했습니다.'
-    );
+    if (moves.length === 1) {
+      const move = moves[0];
+      const result = await dbUpdateScheduleIfUnchanged(
+        move.id,
+        move.expected_updated_at,
+        {
+          board_id: move.board_id,
+          day_of_week: move.day_of_week,
+          start_time: move.start_time,
+          end_time: move.end_time
+        },
+        '다른 사용자가 먼저 이 일정을 이동했습니다.'
+      );
+      success = !!result;
+    } else {
+      const payload = moves.map(({_startAdj, _endAdj, ...move}) => move);
+      const result = await dbMoveScheduleSlotsBatch(payload);
+      success = !!result;
+    }
+
+    if (!success) {
+      // DB 저장이 실패하면 선택 카드 전체를 드래그 전 위치로 되돌립니다.
+      snapshots.forEach(s => {
+        const slot = state.scheduleSlots.find(v => v.id === s.id);
+        if (!slot) return;
+        slot.board_id = s.board_id;
+        slot.day_of_week = s.day_of_week;
+        slot.start_time = s.start_time;
+        slot.end_time = s.end_time;
+      });
+    }
   } finally {
-    scheduleMutationLocks.delete(slotId);
+    movedIds.forEach(id => scheduleMutationLocks.delete(id));
+    clearScheduleMultiSelection();
+    scheduleDragJustFinishedUntil = Date.now() + 180;
     scheduleRenderPending = true;
     endScheduleInteraction();
   }
 }
 
 document.addEventListener('dragend', () => {
-  // drop이 실행된 경우에는 저장 완료 시 onScheduleDrop의 finally에서 해제합니다.
-  // drop 없이 드래그가 취소된 경우에만 여기서 해제합니다.
+  // drop이 실행되지 않고 드래그가 취소된 경우에도 선택은 유지합니다.
+  // 사용자가 다시 드래그하거나 Esc/일반 클릭으로 취소할 수 있습니다.
   if (currentDragSession) {
     currentDragSession = null;
     draggedScheduleId = null;
@@ -4481,9 +4688,16 @@ document.addEventListener('dragend', () => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    clearScheduleMultiSelection();
     document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
     document.body.style.overflow = '';
   }
+});
+
+document.addEventListener('click', (e) => {
+  if (!hasScheduleMultiSelection() || e.shiftKey) return;
+  if (e.target.closest('.event-block') || e.target.closest('.slot-hit')) return;
+  clearScheduleMultiSelection();
 });
 
 async function reloadAndRender() {
